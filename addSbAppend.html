@@ -362,21 +362,15 @@
         <div class="content">
             <div class="alert">
                 <strong>✨ 使用說明：</strong>
-                輸入 SQL 語句，工具會自動處理所有行的排版、註釋移動和駝峰命名轉換。
+                輸入 SQL 語句，工具會自動處理所有行的排版、註釋移動和駝峰命名轉換。HibernateScalarHelper 會根據是否勾選駝峰選項決定使用原始欄位名或 AS 別名。
                 <div class="example"><strong>轉換範例：</strong>
-SELECT a.CONTR_NO --契約編號
-    , b.USER_ID /* 使用者ID */
-    , c.AM_C_MST
-FROM table t --表格
+不勾選駝峰：
+SELECT a.CONTR_NO, b.USER_ID, c.AM_C_MST
+→ HibernateScalarHelper 使用原始欄位名：CONTR_NO, USER_ID, AM_C_MST
 
-<strong>↓ 轉換後 ↓</strong>
-
-sb.append(" SELECT a.CONTR_NO "); //契約編號
-sb.append("     , b.USER_ID "); /* 使用者ID */
-sb.append("     , c.AM_C_MST ");
-sb.append(" FROM table t "); //表格
-
-<strong>注意：nam 相關欄位不會進行駝峰轉換</strong>
+勾選駝峰：
+SELECT a.CONTR_NO AS contrNo, b.USER_ID AS userId, c.AM_C_MST AS amCMst
+→ HibernateScalarHelper 使用 AS 別名：contrNo, userId, amCMst
                 </div>
             </div>
             
@@ -706,7 +700,7 @@ sb.append(" FROM table t "); //表格
             
             // 如果需要生成 HibernateScalarHelper
             if (generateHibernate) {
-                generateHibernateHelper(processedSql);
+                generateHibernateHelper(processedSql, useCamelCaseAs);
             } else {
                 const hibernateOutput = document.getElementById("hibernateOutput");
                 if (hibernateOutput) {
@@ -715,9 +709,10 @@ sb.append(" FROM table t "); //表格
             }
         }
 
-        function generateHibernateHelper(sql) {
+        function generateHibernateHelper(sql, useCamelCaseAs) {
             try {
                 console.log('開始生成 HibernateScalarHelper，SQL:', sql);
+                console.log('是否使用駝峰命名:', useCamelCaseAs);
                 
                 // 使用新的解析方法
                 const selectFields = parseSelectFields(sql);
@@ -747,6 +742,7 @@ sb.append(" FROM table t "); //表格
                         return aliasName;
                     }
                     
+                    // 如果沒有 AS 別名，則根據駝峰選項決定處理方式
                     // 提取欄位名（移除表名前綴和函數）
                     let fieldName = cleanField;
                     
@@ -766,14 +762,15 @@ sb.append(" FROM table t "); //表格
                     // 移除多餘字符，只保留字母數字和底線
                     fieldName = fieldName.replace(/[^\w]/g, '');
                     
-                    // 轉換為駝峰式命名（排除 nam 相關欄位）
-                    if (!isNamField(fieldName) && fieldName.includes('_')) {
+                    // 根據駝峰選項決定是否轉換
+                    if (useCamelCaseAs && !isNamField(fieldName) && fieldName.includes('_')) {
                         const camelCaseName = toCamelCase(fieldName);
                         console.log('轉換為駝峰式命名:', fieldName, '->', camelCaseName);
                         return camelCaseName;
                     }
                     
-                    console.log('最終欄位名:', fieldName);
+                    // 如果不使用駝峰或是 nam 相關欄位，返回原始欄位名
+                    console.log('使用原始欄位名:', fieldName);
                     return fieldName;
                 }).filter(field => field && field.trim() !== '');
                 
