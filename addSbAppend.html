@@ -283,10 +283,7 @@
             color: rgba(255, 255, 255, 0.9);
         }
 
-        .grid-layout {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 28px;
+        .results-layout {
             margin-top: 28px;
         }
 
@@ -318,11 +315,6 @@
             
             .content {
                 padding: 28px 24px;
-            }
-            
-            .grid-layout {
-                grid-template-columns: 1fr;
-                gap: 20px;
             }
             
             .checkbox-group {
@@ -384,12 +376,7 @@ sb.append("     , b.USER_ID "); /* 使用者ID */
 sb.append("     , c.AM_C_MST ");
 sb.append(" FROM table t "); //表格
 
-<strong>↓ HibernateScalarHelper ↓</strong>
-
-List&lt;HibernateScalarHelper&gt; scalarList = new ArrayList&lt;&gt;();
-scalarList.add(new HibernateScalarHelper("contrNo", StandardBasicTypes.STRING));
-scalarList.add(new HibernateScalarHelper("userId", StandardBasicTypes.STRING));
-scalarList.add(new HibernateScalarHelper("amCMst", StandardBasicTypes.STRING));
+<strong>注意：nam 相關欄位不會進行駝峰轉換</strong>
                 </div>
             </div>
             
@@ -401,7 +388,7 @@ scalarList.add(new HibernateScalarHelper("amCMst", StandardBasicTypes.STRING));
             <div class="checkbox-group">
                 <div class="checkbox-item">
                     <input type="checkbox" id="camelCaseAsCheckbox">
-                    <label for="camelCaseAsCheckbox">🐪 SELECT 欄位使用駝峰命名 AS 別名</label>
+                    <label for="camelCaseAsCheckbox">🐪 SELECT 欄位使用駝峰命名 AS 別名（排除 nam 相關欄位）</label>
                 </div>
                 <div class="checkbox-item">
                     <input type="checkbox" id="hibernateCheckbox">
@@ -413,7 +400,7 @@ scalarList.add(new HibernateScalarHelper("amCMst", StandardBasicTypes.STRING));
                 <button id="convertSqlBtn" class="btn">🚀 轉換</button>
             </div>
             
-            <div class="grid-layout">
+            <div class="results-layout">
                 <div class="output-section">
                     <div class="form-group">
                         <label>⚡ sb.append() 結果：</label>
@@ -460,6 +447,17 @@ scalarList.add(new HibernateScalarHelper("amCMst", StandardBasicTypes.STRING));
                 }
                 return word.charAt(0).toUpperCase() + word.slice(1).toLowerCase();
             }).join('');
+        }
+
+        // 檢查是否為 nam 相關欄位
+        function isNamField(fieldName) {
+            const lowerFieldName = fieldName.toLowerCase();
+            return lowerFieldName.includes('nam') || 
+                   lowerFieldName.includes('name') ||
+                   lowerFieldName.startsWith('nam_') ||
+                   lowerFieldName.endsWith('_nam') ||
+                   lowerFieldName.startsWith('name_') ||
+                   lowerFieldName.endsWith('_name');
         }
 
         // 提取並處理註釋 - 適用於所有行
@@ -582,70 +580,84 @@ scalarList.add(new HibernateScalarHelper("amCMst", StandardBasicTypes.STRING));
             
             // 如果啟用駝峰命名 AS 別名，處理 SELECT 欄位
             if (useCamelCaseAs) {
-                // 使用更精確的方式處理多行 SELECT
-                const selectFields = parseSelectFields(processedSql);
-                
-                if (selectFields.length > 0) {
-                    const processedFields = selectFields.map(field => {
-                        // 先提取註釋（如果有的話）
-                        const originalField = field;
-                        let commentInfo = { code: field, comment: null, commentType: null };
+                // 使用更精確的方式處理多行 SELECT，但保持原有的行結構
+                const lines = processedSql.split('\n');
+                const processedLines = lines.map(line => {
+                    const trimmedLine = line.trim();
+                    
+                    // 只處理包含 SELECT 欄位的行
+                    if (trimmedLine.toUpperCase().startsWith('SELECT ') || 
+                        (trimmedLine.startsWith(',') && !trimmedLine.toUpperCase().includes('FROM'))) {
                         
-                        // 檢查原始 SQL 中對應的行是否有註釋
-                        const sqlLines = sql.split('\n');
-                        for (let line of sqlLines) {
-                            if (line.includes(field.split(' ')[0])) {
-                                commentInfo = extractComments(line);
-                                break;
-                            }
-                        }
+                        const commentInfo = extractComments(line);
+                        let codePart = commentInfo.code;
                         
-                        field = commentInfo.code.trim();
+                        // 獲取原始縮排
+                        const indent = getIndentation(line);
+                        const cleanCode = codePart.trim();
+                        
+                        // 處理欄位
+                        let processedCode = cleanCode;
+                        
+                        // 移除 SELECT 關鍵字（如果存在）
+                        const selectRemoved = processedCode.replace(/^SELECT\s+/i, '');
+                        const isSelectLine = processedCode !== selectRemoved;
+                        
+                        // 移除開頭的逗號（如果存在）
+                        const commaRemoved = selectRemoved.replace(/^,\s*/, '');
+                        const hasComma = selectRemoved !== commaRemoved;
+                        
+                        const fieldPart = commaRemoved;
                         
                         // 如果已經有 AS 別名，就不處理
-                        if (field.toUpperCase().includes(' AS ')) {
-                            return commentInfo.comment ? 
-                                (commentInfo.commentType === 'single' ? `${field} --${commentInfo.comment}` : `${field} /* ${commentInfo.comment} */`) : field;
-                        }
-                        
-                        // 提取欄位名（移除表名前綴）
-                        let fieldName = field;
-                        if (field.includes('.')) {
-                            const parts = field.split('.');
-                            fieldName = parts[parts.length - 1];
-                        }
-                        
-                        // 移除函數包裝，例如 COUNT(AM_C_MST) -> AM_C_MST
-                        const functionMatch = fieldName.match(/(\w+)\s*\(\s*([^)]+)\s*\)/);
-                        if (functionMatch) {
-                            fieldName = functionMatch[2].trim();
-                            if (fieldName.includes('.')) {
-                                fieldName = fieldName.split('.').pop();
+                        if (!fieldPart.toUpperCase().includes(' AS ') && fieldPart.trim() !== '') {
+                            // 提取欄位名（移除表名前綴）
+                            let fieldName = fieldPart;
+                            if (fieldPart.includes('.')) {
+                                const parts = fieldPart.split('.');
+                                fieldName = parts[parts.length - 1];
+                            }
+                            
+                            // 移除函數包裝，例如 COUNT(AM_C_MST) -> AM_C_MST
+                            const functionMatch = fieldName.match(/(\w+)\s*\(\s*([^)]+)\s*\)/);
+                            if (functionMatch) {
+                                fieldName = functionMatch[2].trim();
+                                if (fieldName.includes('.')) {
+                                    fieldName = fieldName.split('.').pop();
+                                }
+                            }
+                            
+                            // 移除多餘的空白和特殊字符
+                            fieldName = fieldName.replace(/[^\w]/g, '');
+                            
+                            // 檢查是否為 nam 相關欄位
+                            if (!isNamField(fieldName) && fieldName.includes('_')) {
+                                const camelCaseName = toCamelCase(fieldName);
+                                processedCode = (isSelectLine ? 'SELECT ' : '') + 
+                                               (hasComma ? ', ' : '') + 
+                                               `${fieldPart} AS ${camelCaseName}`;
                             }
                         }
                         
-                        // 移除多餘的空白和特殊字符
-                        fieldName = fieldName.replace(/[^\w]/g, '');
+                        // 重建行
+                        let result = indent + processedCode;
                         
-                        // 如果欄位名包含底線，轉換為駝峰式命名
-                        if (fieldName.includes('_')) {
-                            const camelCaseName = toCamelCase(fieldName);
-                            const result = `${field} AS ${camelCaseName}`;
-                            return commentInfo.comment ? 
-                                (commentInfo.commentType === 'single' ? `${result} --${commentInfo.comment}` : `${result} /* ${commentInfo.comment} */`) : result;
+                        // 如果有註釋，添加回去
+                        if (commentInfo.comment) {
+                            if (commentInfo.commentType === 'single') {
+                                result += ` --${commentInfo.comment}`;
+                            } else if (commentInfo.commentType === 'block') {
+                                result += ` /* ${commentInfo.comment} */`;
+                            }
                         }
                         
-                        return commentInfo.comment ? 
-                            (commentInfo.commentType === 'single' ? `${field} --${commentInfo.comment}` : `${field} /* ${commentInfo.comment} */`) : field;
-                    });
+                        return result;
+                    }
                     
-                    // 重建 SELECT 語句
-                    const selectPart = processedFields.join(', ');
-                    processedSql = processedSql.replace(
-                        /SELECT\s+.*?\s+FROM/gis,
-                        `SELECT ${selectPart} FROM`
-                    );
-                }
+                    return line; // 不是 SELECT 欄位行就保持原樣
+                });
+                
+                processedSql = processedLines.join('\n');
             }
             
             // 轉換為 sb.append() 格式 - 處理所有行的註釋
@@ -754,8 +766,8 @@ scalarList.add(new HibernateScalarHelper("amCMst", StandardBasicTypes.STRING));
                     // 移除多餘字符，只保留字母數字和底線
                     fieldName = fieldName.replace(/[^\w]/g, '');
                     
-                    // 轉換為駝峰式命名
-                    if (fieldName.includes('_')) {
+                    // 轉換為駝峰式命名（排除 nam 相關欄位）
+                    if (!isNamField(fieldName) && fieldName.includes('_')) {
                         const camelCaseName = toCamelCase(fieldName);
                         console.log('轉換為駝峰式命名:', fieldName, '->', camelCaseName);
                         return camelCaseName;
