@@ -1,0 +1,377 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SQL 工具集</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+            position: relative;
+            overflow-x: hidden;
+        }
+
+        body::before {
+            content: '';
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: 
+                radial-gradient(circle at 20% 50%, rgba(120, 119, 198, 0.3) 0%, transparent 50%),
+                radial-gradient(circle at 80% 20%, rgba(255, 119, 198, 0.3) 0%, transparent 50%),
+                radial-gradient(circle at 40% 80%, rgba(120, 219, 255, 0.3) 0%, transparent 50%);
+            pointer-events: none;
+            z-index: -1;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border-radius: 24px;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            box-shadow: 
+                0 8px 32px rgba(0, 0, 0, 0.1),
+                inset 0 1px 0 rgba(255, 255, 255, 0.2);
+            overflow: hidden;
+        }
+
+        .header {
+            background: linear-gradient(135deg, rgba(255, 255, 255, 0.2) 0%, rgba(255, 255, 255, 0.1) 100%);
+            backdrop-filter: blur(10px);
+            color: white;
+            padding: 40px;
+            text-align: center;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .header h1 {
+            font-size: 2.8rem;
+            font-weight: 700;
+            margin-bottom: 12px;
+            text-shadow: 0 2px 10px rgba(0, 0, 0, 0.2);
+            background: linear-gradient(135deg, #fff 0%, rgba(255, 255, 255, 0.8) 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .header p {
+            font-size: 1.2rem;
+            opacity: 0.9;
+            font-weight: 400;
+        }
+
+        .nav {
+            background: rgba(255, 255, 255, 0.08);
+            backdrop-filter: blur(10px);
+            padding: 0;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .nav a {
+            display: inline-block;
+            color: rgba(255, 255, 255, 0.9);
+            text-decoration: none;
+            padding: 20px 32px;
+            font-weight: 500;
+            font-size: 1rem;
+            transition: all 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+            position: relative;
+            border-right: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .nav a:hover {
+            background: rgba(255, 255, 255, 0.1);
+            color: white;
+            transform: translateY(-1px);
+        }
+
+        .nav a.active {
+            background: rgba(255, 255, 255, 0.15);
+            color: white;
+        }
+
+        .nav a::after {
+            content: '';
+            position: absolute;
+            bottom: 0;
+            left: 50%;
+            width: 0;
+            height: 2px;
+            background: linear-gradient(90deg, #ff6b6b, #4ecdc4);
+            transition: all 0.3s ease;
+            transform: translateX(-50%);
+        }
+
+        .nav a:hover::after,
+        .nav a.active::after {
+            width: 80%;
+        }
+
+        .content {
+            padding: 40px;
+            background: rgba(255, 255, 255, 0.02);
+        }
+
+        .welcome {
+            text-align: center;
+            margin-bottom: 40px;
+        }
+
+        .welcome h2 {
+            color: rgba(255, 255, 255, 0.95);
+            font-size: 2.2rem;
+            font-weight: 600;
+            margin-bottom: 16px;
+        }
+
+        .welcome p {
+            color: rgba(255, 255, 255, 0.8);
+            font-size: 1.1rem;
+            line-height: 1.6;
+            max-width: 800px;
+            margin: 0 auto;
+        }
+
+        .tool-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(380px, 1fr));
+            gap: 32px;
+            margin-top: 40px;
+        }
+
+        .tool-card {
+            background: rgba(255, 255, 255, 0.08);
+            backdrop-filter: blur(10px);
+            border-radius: 20px;
+            padding: 32px;
+            border: 1px solid rgba(255, 255, 255, 0.15);
+            transition: all 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+            cursor: pointer;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .tool-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.1), transparent);
+            transition: left 0.5s;
+        }
+
+        .tool-card:hover::before {
+            left: 100%;
+        }
+
+        .tool-card:hover {
+            transform: translateY(-8px);
+            box-shadow: 0 12px 40px rgba(0, 0, 0, 0.2);
+            border-color: rgba(255, 255, 255, 0.25);
+            background: rgba(255, 255, 255, 0.12);
+        }
+
+        .tool-card h3 {
+            color: rgba(255, 255, 255, 0.95);
+            margin-bottom: 16px;
+            font-size: 1.4rem;
+            font-weight: 600;
+        }
+
+        .tool-card p {
+            color: rgba(255, 255, 255, 0.8);
+            line-height: 1.6;
+            margin-bottom: 24px;
+            font-size: 1rem;
+        }
+
+        .btn {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 16px;
+            cursor: pointer;
+            font-size: 15px;
+            font-weight: 600;
+            text-decoration: none;
+            display: inline-block;
+            transition: all 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(102, 126, 234, 0.4);
+            background: linear-gradient(135deg, #5a67d8 0%, #6b46c1 100%);
+        }
+
+        .features {
+            margin-top: 60px;
+        }
+
+        .features h2 {
+            text-align: center;
+            color: rgba(255, 255, 255, 0.95);
+            margin-bottom: 40px;
+            font-size: 2rem;
+            font-weight: 600;
+        }
+
+        .feature-list {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 24px;
+        }
+
+        .feature-item {
+            background: rgba(255, 255, 255, 0.08);
+            backdrop-filter: blur(10px);
+            padding: 24px;
+            border-radius: 16px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-left: 4px solid #4ecdc4;
+        }
+
+        .feature-item h4 {
+            color: rgba(255, 255, 255, 0.95);
+            margin-bottom: 12px;
+            font-size: 1.1rem;
+            font-weight: 600;
+        }
+
+        .feature-item p {
+            color: rgba(255, 255, 255, 0.8);
+            line-height: 1.5;
+            font-size: 0.95rem;
+        }
+
+        @media (max-width: 768px) {
+            .container {
+                margin: 10px;
+                border-radius: 20px;
+            }
+            
+            .header {
+                padding: 28px 24px;
+            }
+            
+            .header h1 {
+                font-size: 2.2rem;
+            }
+            
+            .content {
+                padding: 28px 24px;
+            }
+            
+            .tool-grid {
+                grid-template-columns: 1fr;
+                gap: 24px;
+            }
+            
+            .nav a {
+                padding: 16px 24px;
+                font-size: 0.95rem;
+            }
+        }
+
+        @media (max-width: 480px) {
+            body {
+                padding: 10px;
+            }
+            
+            .nav a {
+                display: block;
+                text-align: center;
+                border-right: none;
+                border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+            }
+            
+            .nav a:last-child {
+                border-bottom: none;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>SQL 工具集</h1>
+            <p>專業的 SQL 開發輔助工具，提高您的開發效率</p>
+        </div>
+        
+        <nav class="nav">
+            <a href="index.html" class="active">🏠 首頁</a>
+            <a href="putSpecSql.html">🔧 參數替換</a>
+            <a href="changeQuestionMark.html">❓ 問號轉換</a>
+            <a href="addSbAppend.html">☕ Java 轉換</a>
+        </nav>
+        
+        <div class="content">
+            <div class="welcome">
+                <h2>歡迎使用 SQL 工具集</h2>
+                <p>這是一套專為 SQL 開發者設計的工具集合，採用現代化的液體玻璃設計風格，包含了常用的 SQL 處理功能，幫助您更高效地進行 SQL 開發工作。</p>
+            </div>
+            
+            <div class="tool-grid">
+                <div class="tool-card" onclick="location.href='putSpecSql.html'">
+                    <h3>🔧 SQL 參數替換工具</h3>
+                    <p>自動掃描 SQL 語句中的參數佔位符（如 'Parm1', 'Parm2'），並提供輸入界面進行批量替換，適合測試和調試 SQL 語句。支援智能識別和批量處理。</p>
+                    <a href="putSpecSql.html" class="btn">開始使用</a>
+                </div>
+                
+                <div class="tool-card" onclick="location.href='changeQuestionMark.html'">
+                    <h3>❓ SQL 問號轉換工具</h3>
+                    <p>將含有問號佔位符的 SQL 語句轉換為實際參數值，支援陣列格式參數輸入，方便進行 SQL 調試。提供參數數量驗證和錯誤提示。</p>
+                    <a href="changeQuestionMark.html" class="btn">開始使用</a>
+                </div>
+                
+                <div class="tool-card" onclick="location.href='addSbAppend.html'">
+                    <h3>☕ SQL 轉 Java 工具</h3>
+                    <p>將 SQL 語句轉換為 Java StringBuilder.append() 格式，支援駝峰命名、註釋處理、排版保持和 HibernateScalarHelper 生成。完美保持代碼格式。</p>
+                    <a href="addSbAppend.html" class="btn">開始使用</a>
+                </div>
+            </div>
+            
+            <div class="features">
+                <h2>✨ 功能特色</h2>
+                <div class="feature-list">
+                    <div class="feature-item">
+                        <h4>🚀 高效便捷</h4>
+                        <p>一鍵轉換，智能處理，節省大量重複工作時間</p>
+                    </div>
+                    <div class="feature-item">
+                        <h4>🎯 精確處理</h4>
+                        <p>智能識別 SQL 結構，確保轉換準確性和格式完整性</p>
+                    </div>
+                    <div class="feature-item">
+                        <h4>📱 響應式設計</h4>
+                        <p>支援桌面和行動裝置，隨時隨地使用，完美適配各種螢幕</p>
+                    </div>
+                    <div class="feature-item">
+                        <h4>🛡️ 安全可靠</h4>
+                        <p>純前端處理，資料不上傳，完全保護您的隱私和資料安全</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</body>
+</html>

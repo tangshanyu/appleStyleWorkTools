@@ -1,0 +1,702 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SQL 轉 Java sb.append() 工具</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+            position: relative;
+            overflow-x: hidden;
+        }
+
+        body::before {
+            content: '';
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: 
+                radial-gradient(circle at 20% 50%, rgba(120, 119, 198, 0.3) 0%, transparent 50%),
+                radial-gradient(circle at 80% 20%, rgba(255, 119, 198, 0.3) 0%, transparent 50%),
+                radial-gradient(circle at 40% 80%, rgba(120, 219, 255, 0.3) 0%, transparent 50%);
+            pointer-events: none;
+            z-index: -1;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border-radius: 24px;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            box-shadow: 
+                0 8px 32px rgba(0, 0, 0, 0.1),
+                inset 0 1px 0 rgba(255, 255, 255, 0.2);
+            overflow: hidden;
+        }
+
+        .header {
+            background: linear-gradient(135deg, rgba(243, 156, 18, 0.3) 0%, rgba(230, 126, 34, 0.3) 100%);
+            backdrop-filter: blur(10px);
+            color: white;
+            padding: 40px;
+            text-align: center;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .header h1 {
+            font-size: 2.8rem;
+            font-weight: 700;
+            margin-bottom: 12px;
+            text-shadow: 0 2px 10px rgba(0, 0, 0, 0.2);
+            background: linear-gradient(135deg, #fff 0%, rgba(255, 255, 255, 0.8) 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .header p {
+            font-size: 1.2rem;
+            opacity: 0.9;
+            font-weight: 400;
+        }
+
+        .nav {
+            background: rgba(255, 255, 255, 0.08);
+            backdrop-filter: blur(10px);
+            padding: 0;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .nav a {
+            display: inline-block;
+            color: rgba(255, 255, 255, 0.9);
+            text-decoration: none;
+            padding: 20px 32px;
+            font-weight: 500;
+            font-size: 1rem;
+            transition: all 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+            position: relative;
+            border-right: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .nav a:hover {
+            background: rgba(255, 255, 255, 0.1);
+            color: white;
+            transform: translateY(-1px);
+        }
+
+        .nav a::after {
+            content: '';
+            position: absolute;
+            bottom: 0;
+            left: 50%;
+            width: 0;
+            height: 2px;
+            background: linear-gradient(90deg, #f39c12, #e67e22);
+            transition: all 0.3s ease;
+            transform: translateX(-50%);
+        }
+
+        .nav a:hover::after {
+            width: 80%;
+        }
+
+        .content {
+            padding: 40px;
+            background: rgba(255, 255, 255, 0.02);
+        }
+
+        .form-group {
+            margin-bottom: 28px;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 10px;
+            font-weight: 600;
+            color: rgba(255, 255, 255, 0.9);
+            font-size: 1.1rem;
+        }
+
+        .form-control {
+            width: 100%;
+            padding: 16px 20px;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 16px;
+            font-size: 15px;
+            background: rgba(255, 255, 255, 0.08);
+            backdrop-filter: blur(10px);
+            color: rgba(255, 255, 255, 0.9);
+            transition: all 0.3s ease;
+        }
+
+        .form-control:focus {
+            outline: none;
+            border-color: rgba(243, 156, 18, 0.6);
+            background: rgba(255, 255, 255, 0.12);
+            box-shadow: 0 0 0 3px rgba(243, 156, 18, 0.2);
+        }
+
+        .form-control::placeholder {
+            color: rgba(255, 255, 255, 0.5);
+        }
+
+        textarea.form-control {
+            min-height: 220px;
+            resize: vertical;
+            font-family: 'SF Mono', 'Monaco', 'Cascadia Code', 'Roboto Mono', monospace;
+            line-height: 1.6;
+            tab-size: 4;
+        }
+
+        .checkbox-group {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 24px;
+            margin-bottom: 24px;
+        }
+
+        .checkbox-item {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 12px 20px;
+            background: rgba(255, 255, 255, 0.08);
+            border-radius: 12px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            transition: all 0.3s ease;
+        }
+
+        .checkbox-item:hover {
+            background: rgba(255, 255, 255, 0.12);
+            transform: translateY(-1px);
+        }
+
+        .checkbox-item input[type="checkbox"] {
+            width: 18px;
+            height: 18px;
+            accent-color: #f39c12;
+        }
+
+        .checkbox-item label {
+            color: rgba(255, 255, 255, 0.9);
+            font-weight: 500;
+            cursor: pointer;
+            margin: 0;
+        }
+
+        .btn {
+            background: linear-gradient(135deg, #f39c12 0%, #e67e22 100%);
+            color: white;
+            border: none;
+            padding: 14px 28px;
+            border-radius: 16px;
+            cursor: pointer;
+            font-size: 16px;
+            font-weight: 600;
+            margin-right: 12px;
+            margin-bottom: 12px;
+            transition: all 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(243, 156, 18, 0.4);
+            background: linear-gradient(135deg, #e67e22 0%, #f39c12 100%);
+        }
+
+        .btn-success {
+            background: linear-gradient(135deg, #27ae60 0%, #2ecc71 100%);
+        }
+
+        .btn-success:hover {
+            background: linear-gradient(135deg, #2ecc71 0%, #27ae60 100%);
+            box-shadow: 0 8px 25px rgba(39, 174, 96, 0.4);
+        }
+
+        .output {
+            background: rgba(0, 0, 0, 0.2);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 16px;
+            padding: 20px;
+            font-family: 'SF Mono', 'Monaco', 'Cascadia Code', 'Roboto Mono', monospace;
+            font-size: 14px;
+            line-height: 1.6;
+            color: rgba(255, 255, 255, 0.9);
+            white-space: pre;
+            max-height: 450px;
+            overflow: auto;
+            tab-size: 4;
+        }
+
+        .output::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+
+        .output::-webkit-scrollbar-track {
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 4px;
+        }
+
+        .output::-webkit-scrollbar-thumb {
+            background: rgba(255, 255, 255, 0.3);
+            border-radius: 4px;
+        }
+
+        .output::-webkit-scrollbar-thumb:hover {
+            background: rgba(255, 255, 255, 0.5);
+        }
+
+        .button-group {
+            margin-top: 20px;
+        }
+
+        .output-section {
+            margin-bottom: 36px;
+        }
+
+        .alert {
+            padding: 20px 24px;
+            margin-bottom: 28px;
+            border-radius: 16px;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            background: rgba(243, 156, 18, 0.1);
+            backdrop-filter: blur(10px);
+            color: rgba(255, 255, 255, 0.9);
+        }
+
+        .grid-layout {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 28px;
+            margin-top: 28px;
+        }
+
+        .example {
+            background: rgba(255, 193, 7, 0.1);
+            border: 1px solid rgba(255, 193, 7, 0.3);
+            border-radius: 12px;
+            padding: 16px;
+            margin-top: 16px;
+            font-family: 'SF Mono', 'Monaco', 'Cascadia Code', 'Roboto Mono', monospace;
+            font-size: 13px;
+            color: rgba(255, 255, 255, 0.9);
+            line-height: 1.5;
+        }
+
+        @media (max-width: 768px) {
+            .container {
+                margin: 10px;
+                border-radius: 20px;
+            }
+            
+            .header {
+                padding: 28px 24px;
+            }
+            
+            .header h1 {
+                font-size: 2.2rem;
+            }
+            
+            .content {
+                padding: 28px 24px;
+            }
+            
+            .grid-layout {
+                grid-template-columns: 1fr;
+                gap: 20px;
+            }
+            
+            .checkbox-group {
+                flex-direction: column;
+                gap: 16px;
+            }
+            
+            .nav a {
+                padding: 16px 24px;
+                font-size: 0.95rem;
+            }
+        }
+
+        @media (max-width: 480px) {
+            body {
+                padding: 10px;
+            }
+            
+            .nav a {
+                display: block;
+                text-align: center;
+                border-right: none;
+                border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+            }
+            
+            .nav a:last-child {
+                border-bottom: none;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>SQL 轉 Java sb.append()</h1>
+            <p>將 SQL 語句轉換為 Java StringBuilder.append() 格式，支援註釋處理與排版優化</p>
+        </div>
+        
+        <nav class="nav">
+            <a href="index.html">🏠 回首頁</a>
+            <a href="putSpecSql.html">🔧 參數替換</a>
+            <a href="changeQuestionMark.html">❓ 問號轉換</a>
+        </nav>
+        
+        <div class="content">
+            <div class="alert">
+                <strong>✨ 使用說明：</strong>
+                輸入 SQL 語句，工具會自動處理所有行的排版、註釋移動和駝峰命名轉換。
+                <div class="example"><strong>轉換範例：</strong>
+SELECT a.CONTR_NO --契約編號
+    , b.USER_ID /* 使用者ID */
+FROM table t --表格
+
+<strong>↓ 轉換後 ↓</strong>
+
+sb.append(" SELECT a.CONTR_NO "); //契約編號
+sb.append("     , b.USER_ID "); /* 使用者ID */
+sb.append(" FROM table t "); //表格
+                </div>
+            </div>
+            
+            <div class="form-group">
+                <label for="sqlInput">📝 輸入 SQL：</label>
+                <textarea id="sqlInput" class="form-control" placeholder="請輸入 SQL 語句，支援 -- 和 /* */ 註釋..." rows="12"></textarea>
+            </div>
+            
+            <div class="checkbox-group">
+                <div class="checkbox-item">
+                    <input type="checkbox" id="camelCaseAsCheckbox">
+                    <label for="camelCaseAsCheckbox">🐪 SELECT 欄位使用駝峰命名 AS 別名</label>
+                </div>
+                <div class="checkbox-item">
+                    <input type="checkbox" id="hibernateCheckbox">
+                    <label for="hibernateCheckbox">🏗️ 產生 HibernateScalarHelper</label>
+                </div>
+            </div>
+            
+            <div class="button-group">
+                <button id="convertSqlBtn" class="btn">🚀 轉換</button>
+            </div>
+            
+            <div class="grid-layout">
+                <div class="output-section">
+                    <div class="form-group">
+                        <label>⚡ sb.append() 結果：</label>
+                        <div id="sbAppendOutput" class="output">sb.append() 結果將在這裡顯示...</div>
+                    </div>
+                    <div class="button-group">
+                        <button class="btn btn-success copy-button" data-copy-target="sbAppendOutput">📋 複製</button>
+                    </div>
+                </div>
+                
+                <div class="output-section">
+                    <div class="form-group">
+                        <label>🏗️ HibernateScalarHelper List：</label>
+                        <div id="hibernateOutput" class="output">HibernateScalarHelper 結果將在這裡顯示...</div>
+                    </div>
+                    <div class="button-group">
+                        <button class="btn btn-success copy-button" data-copy-target="hibernateOutput">📋 複製</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script type="module">
+        function initializeAddSbAppendTool() {
+            const convertBtn = document.getElementById('convertSqlBtn');
+            const copyButtons = document.querySelectorAll('.copy-button');
+            
+            if (convertBtn) convertBtn.addEventListener('click', convertSql);
+            
+            copyButtons.forEach(button => {
+                const targetId = button.dataset.copyTarget;
+                if (targetId) {
+                    button.addEventListener('click', () => copyToClipboard(targetId));
+                }
+            });
+        }
+
+        // 將底線分隔的字段名轉換為駝峰式命名
+        function toCamelCase(str) {
+            return str.split('_').map((word, index) => {
+                if (index === 0) {
+                    return word.toLowerCase();
+                }
+                return word.charAt(0).toUpperCase() + word.slice(1).toLowerCase();
+            }).join('');
+        }
+
+        // 提取並處理註釋 - 適用於所有行
+        function extractComments(line) {
+            const result = {
+                code: line,
+                comment: null,
+                commentType: null
+            };
+
+            // 處理 -- 註釋
+            const singleLineCommentMatch = line.match(/^(.*?)--(.*)$/);
+            if (singleLineCommentMatch) {
+                result.code = singleLineCommentMatch[1].trimEnd();
+                result.comment = singleLineCommentMatch[2].trim();
+                result.commentType = 'single';
+                return result;
+            }
+
+            // 處理 /* */ 註釋
+            const blockCommentMatch = line.match(/^(.*?)\/\*(.*?)\*\/(.*)$/);
+            if (blockCommentMatch) {
+                result.code = (blockCommentMatch[1] + blockCommentMatch[3]).trim();
+                result.comment = blockCommentMatch[2].trim();
+                result.commentType = 'block';
+                return result;
+            }
+
+            return result;
+        }
+
+        // 計算行的縮排空格數（tab = 4 spaces）
+        function getIndentation(line) {
+            const match = line.match(/^(\s*)/);
+            if (!match) return '';
+            
+            const indent = match[1];
+            // 將 tab 轉換為 4 個空格
+            return indent.replace(/\t/g, '    ');
+        }
+
+        function convertSql() {
+            const sql = document.getElementById("sqlInput")?.value || "";
+            const useCamelCaseAs = document.getElementById('camelCaseAsCheckbox')?.checked || false;
+            const generateHibernate = document.getElementById('hibernateCheckbox')?.checked || false;
+            
+            if (!sql.trim()) {
+                alert("請輸入 SQL 語句");
+                return;
+            }
+            
+            // 處理 SQL 語句
+            let processedSql = sql;
+            
+            // 如果啟用駝峰命名 AS 別名，處理 SELECT 欄位
+            if (useCamelCaseAs) {
+                processedSql = processedSql.replace(/SELECT\s+(.*?)\s+FROM/gi, (match, fields) => {
+                    const processedFields = fields.split(',').map(field => {
+                        field = field.trim();
+                        
+                        // 先提取註釋
+                        const commentInfo = extractComments(field);
+                        field = commentInfo.code;
+                        
+                        // 如果已經有 AS 別名，就不處理
+                        if (field.toUpperCase().includes(' AS ')) {
+                            return commentInfo.comment ? 
+                                (commentInfo.commentType === 'single' ? `${field} --${commentInfo.comment}` : `${field} /* ${commentInfo.comment} */`) : field;
+                        }
+                        
+                        // 提取欄位名（移除表名前綴）
+                        let fieldName = field;
+                        if (field.includes('.')) {
+                            const parts = field.split('.');
+                            fieldName = parts[parts.length - 1];
+                        }
+                        
+                        // 移除函數包裝，例如 COUNT(AM_C_MST) -> AM_C_MST
+                        const functionMatch = fieldName.match(/\w+\((.+)\)/);
+                        if (functionMatch) {
+                            fieldName = functionMatch[1];
+                        }
+                        
+                        // 如果欄位名包含底線，轉換為駝峰式命名
+                        if (fieldName.includes('_')) {
+                            const camelCaseName = toCamelCase(fieldName);
+                            const result = `${field} AS ${camelCaseName}`;
+                            return commentInfo.comment ? 
+                                (commentInfo.commentType === 'single' ? `${result} --${commentInfo.comment}` : `${result} /* ${commentInfo.comment} */`) : result;
+                        }
+                        
+                        return commentInfo.comment ? 
+                            (commentInfo.commentType === 'single' ? `${field} --${commentInfo.comment}` : `${field} /* ${commentInfo.comment} */`) : field;
+                    }).join(', ');
+                    return `SELECT ${processedFields} FROM`;
+                });
+            }
+            
+            // 轉換為 sb.append() 格式 - 處理所有行的註釋
+            const lines = processedSql.split('\n');
+            const sbAppendResult = lines.map(line => {
+                if (!line.trim()) return '';
+                
+                // 提取註釋 - 對所有行都進行處理
+                const commentInfo = extractComments(line);
+                const code = commentInfo.code;
+                const comment = commentInfo.comment;
+                const commentType = commentInfo.commentType;
+                
+                // 獲取原始縮排
+                const indent = getIndentation(line);
+                
+                // 移除原始縮排，保持內容
+                const cleanCode = code.trim();
+                
+                if (cleanCode) {
+                    // 轉換單引號
+                    const escapedCode = cleanCode.replace(/'/g, "''");
+                    
+                    // 組成 sb.append() 語句，前後各加一個空格
+                    let appendStatement = `sb.append("${indent} ${escapedCode} ");`;
+                    
+                    // 如果有註釋，添加到後面
+                    if (comment) {
+                        if (commentType === 'single') {
+                            appendStatement += ` //${comment}`;
+                        } else if (commentType === 'block') {
+                            appendStatement += ` /* ${comment} */`;
+                        }
+                    }
+                    
+                    return appendStatement;
+                }
+                return '';
+            }).filter(line => line).join('\n');
+            
+            // 更新結果
+            const sbOutput = document.getElementById("sbAppendOutput");
+            if (sbOutput) {
+                sbOutput.textContent = sbAppendResult;
+            }
+            
+            // 如果需要生成 HibernateScalarHelper
+            if (generateHibernate) {
+                generateHibernateHelper(processedSql);
+            } else {
+                const hibernateOutput = document.getElementById("hibernateOutput");
+                if (hibernateOutput) {
+                    hibernateOutput.textContent = "請勾選「產生 HibernateScalarHelper」選項";
+                }
+            }
+        }
+
+        function generateHibernateHelper(sql) {
+            try {
+                // 提取 SELECT 欄位
+                const selectMatch = sql.match(/SELECT\s+(.*?)\s+FROM/gi);
+                if (selectMatch && selectMatch.length > 0) {
+                    const selectPart = selectMatch[0].replace(/SELECT\s+/gi, '').replace(/\s+FROM$/gi, '');
+                    const fields = selectPart.split(',').map(field => {
+                        const trimmed = field.trim();
+                        
+                        // 先移除註釋
+                        const commentInfo = extractComments(trimmed);
+                        const cleanField = commentInfo.code;
+                        
+                        // 檢查是否有 AS 別名
+                        const asMatch = cleanField.match(/\s+AS\s+(\w+)/i);
+                        if (asMatch) {
+                            return asMatch[1];
+                        }
+                        
+                        // 提取欄位名（移除表名前綴和函數）
+                        let fieldName = cleanField;
+                        if (fieldName.includes('.')) {
+                            fieldName = fieldName.split('.').pop();
+                        }
+                        
+                        // 處理函數，例如 COUNT(AM_C_MST) -> AM_C_MST
+                        const functionMatch = fieldName.match(/\w+\((.+)\)/);
+                        if (functionMatch) {
+                            fieldName = functionMatch[1];
+                        }
+                        
+                        return fieldName;
+                    });
+                    
+                    if (fields.length > 0) {
+                        // 生成 HibernateScalarHelper List 格式
+                        const hibernateList = fields.map(field => 
+                            `scalarList.add(new HibernateScalarHelper("${field}", StandardBasicTypes.STRING));`
+                        ).join('\n');
+                        
+                        const hibernateResult = `List<HibernateScalarHelper> scalarList = new ArrayList<>();\n${hibernateList}`;
+                        
+                        const hibernateOutput = document.getElementById("hibernateOutput");
+                        if (hibernateOutput) {
+                            hibernateOutput.textContent = hibernateResult;
+                        }
+                    }
+                } else {
+                    const hibernateOutput = document.getElementById("hibernateOutput");
+                    if (hibernateOutput) {
+                        hibernateOutput.textContent = "無法識別 SELECT 語句，請檢查 SQL 格式";
+                    }
+                }
+            } catch (error) {
+                const hibernateOutput = document.getElementById("hibernateOutput");
+                if (hibernateOutput) {
+                    hibernateOutput.textContent = "生成 HibernateScalarHelper 時發生錯誤：" + error.message;
+                }
+            }
+        }
+
+        function copyToClipboard(id) {
+            const element = document.getElementById(id);
+            if (element) {
+                const text = element.textContent;
+                if (text && !text.includes("將在這裡顯示") && !text.includes("請勾選")) {
+                    navigator.clipboard.writeText(text)
+                        .then(() => {
+                            // 更好的複製成功提示
+                            const btn = document.querySelector(`[data-copy-target="${id}"]`);
+                            const originalText = btn.textContent;
+                            btn.textContent = '✅ 已複製！';
+                            btn.style.background = 'linear-gradient(135deg, #27ae60 0%, #2ecc71 100%)';
+                            
+                            setTimeout(() => {
+                                btn.textContent = originalText;
+                                btn.style.background = '';
+                            }, 2000);
+                        })
+                        .catch(err => {
+                            console.error('複製失敗:', err);
+                            alert("複製失敗，請手動複製");
+                        });
+                } else {
+                    alert("沒有可複製的內容");
+                }
+            }
+        }
+
+        // 頁面載入完成後初始化
+        document.addEventListener('DOMContentLoaded', function() {
+            initializeAddSbAppendTool();
+        });
+    </script>
+</body>
+</html>
