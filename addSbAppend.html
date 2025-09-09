@@ -4,351 +4,11 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>SQL 轉 Java sb.append() 工具</title>
-    <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
-
-        body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            min-height: 100vh;
-            padding: 20px;
-            position: relative;
-            overflow-x: hidden;
-        }
-
-        body::before {
-            content: '';
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background: 
-                radial-gradient(circle at 20% 50%, rgba(120, 119, 198, 0.3) 0%, transparent 50%),
-                radial-gradient(circle at 80% 20%, rgba(255, 119, 198, 0.3) 0%, transparent 50%),
-                radial-gradient(circle at 40% 80%, rgba(120, 219, 255, 0.3) 0%, transparent 50%);
-            pointer-events: none;
-            z-index: -1;
-        }
-
-        .container {
-            max-width: 1400px;
-            margin: 0 auto;
-            background: rgba(255, 255, 255, 0.1);
-            backdrop-filter: blur(20px);
-            -webkit-backdrop-filter: blur(20px);
-            border-radius: 24px;
-            border: 1px solid rgba(255, 255, 255, 0.2);
-            box-shadow: 
-                0 8px 32px rgba(0, 0, 0, 0.1),
-                inset 0 1px 0 rgba(255, 255, 255, 0.2);
-            overflow: hidden;
-        }
-
-        .header {
-            background: linear-gradient(135deg, rgba(243, 156, 18, 0.3) 0%, rgba(230, 126, 34, 0.3) 100%);
-            backdrop-filter: blur(10px);
-            color: white;
-            padding: 40px;
-            text-align: center;
-            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
-        }
-
-        .header h1 {
-            font-size: 2.8rem;
-            font-weight: 700;
-            margin-bottom: 12px;
-            text-shadow: 0 2px 10px rgba(0, 0, 0, 0.2);
-            background: linear-gradient(135deg, #fff 0%, rgba(255, 255, 255, 0.8) 100%);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-            background-clip: text;
-        }
-
-        .header p {
-            font-size: 1.2rem;
-            opacity: 0.9;
-            font-weight: 400;
-        }
-
-        .nav {
-            background: rgba(255, 255, 255, 0.08);
-            backdrop-filter: blur(10px);
-            padding: 0;
-            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
-        }
-
-        .nav a {
-            display: inline-block;
-            color: rgba(255, 255, 255, 0.9);
-            text-decoration: none;
-            padding: 20px 32px;
-            font-weight: 500;
-            font-size: 1rem;
-            transition: all 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94);
-            position: relative;
-            border-right: 1px solid rgba(255, 255, 255, 0.1);
-        }
-
-        .nav a:hover {
-            background: rgba(255, 255, 255, 0.1);
-            color: white;
-            transform: translateY(-1px);
-        }
-
-        .nav a::after {
-            content: '';
-            position: absolute;
-            bottom: 0;
-            left: 50%;
-            width: 0;
-            height: 2px;
-            background: linear-gradient(90deg, #f39c12, #e67e22);
-            transition: all 0.3s ease;
-            transform: translateX(-50%);
-        }
-
-        .nav a:hover::after {
-            width: 80%;
-        }
-
-        .content {
-            padding: 40px;
-            background: rgba(255, 255, 255, 0.02);
-        }
-
-        .form-group {
-            margin-bottom: 28px;
-        }
-
-        .form-group label {
-            display: block;
-            margin-bottom: 10px;
-            font-weight: 600;
-            color: rgba(255, 255, 255, 0.9);
-            font-size: 1.1rem;
-        }
-
-        .form-control {
-            width: 100%;
-            padding: 16px 20px;
-            border: 1px solid rgba(255, 255, 255, 0.2);
-            border-radius: 16px;
-            font-size: 15px;
-            background: rgba(255, 255, 255, 0.08);
-            backdrop-filter: blur(10px);
-            color: rgba(255, 255, 255, 0.9);
-            transition: all 0.3s ease;
-        }
-
-        .form-control:focus {
-            outline: none;
-            border-color: rgba(243, 156, 18, 0.6);
-            background: rgba(255, 255, 255, 0.12);
-            box-shadow: 0 0 0 3px rgba(243, 156, 18, 0.2);
-        }
-
-        .form-control::placeholder {
-            color: rgba(255, 255, 255, 0.5);
-        }
-
-        textarea.form-control {
-            min-height: 220px;
-            resize: vertical;
-            font-family: 'SF Mono', 'Monaco', 'Cascadia Code', 'Roboto Mono', monospace;
-            line-height: 1.6;
-            tab-size: 4;
-        }
-
-        .checkbox-group {
-            display: flex;
-            flex-wrap: wrap;
-            gap: 24px;
-            margin-bottom: 24px;
-        }
-
-        .checkbox-item {
-            display: flex;
-            align-items: center;
-            gap: 12px;
-            padding: 12px 20px;
-            background: rgba(255, 255, 255, 0.08);
-            border-radius: 12px;
-            border: 1px solid rgba(255, 255, 255, 0.1);
-            transition: all 0.3s ease;
-        }
-
-        .checkbox-item:hover {
-            background: rgba(255, 255, 255, 0.12);
-            transform: translateY(-1px);
-        }
-
-        .checkbox-item input[type="checkbox"] {
-            width: 18px;
-            height: 18px;
-            accent-color: #f39c12;
-        }
-
-        .checkbox-item label {
-            color: rgba(255, 255, 255, 0.9);
-            font-weight: 500;
-            cursor: pointer;
-            margin: 0;
-        }
-
-        .btn {
-            background: linear-gradient(135deg, #f39c12 0%, #e67e22 100%);
-            color: white;
-            border: none;
-            padding: 14px 28px;
-            border-radius: 16px;
-            cursor: pointer;
-            font-size: 16px;
-            font-weight: 600;
-            margin-right: 12px;
-            margin-bottom: 12px;
-            transition: all 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94);
-            border: 1px solid rgba(255, 255, 255, 0.2);
-        }
-
-        .btn:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 8px 25px rgba(243, 156, 18, 0.4);
-            background: linear-gradient(135deg, #e67e22 0%, #f39c12 100%);
-        }
-
-        .btn-success {
-            background: linear-gradient(135deg, #27ae60 0%, #2ecc71 100%);
-        }
-
-        .btn-success:hover {
-            background: linear-gradient(135deg, #2ecc71 0%, #27ae60 100%);
-            box-shadow: 0 8px 25px rgba(39, 174, 96, 0.4);
-        }
-
-        .output {
-            background: rgba(0, 0, 0, 0.2);
-            backdrop-filter: blur(10px);
-            border: 1px solid rgba(255, 255, 255, 0.1);
-            border-radius: 16px;
-            padding: 20px;
-            font-family: 'SF Mono', 'Monaco', 'Cascadia Code', 'Roboto Mono', monospace;
-            font-size: 14px;
-            line-height: 1.6;
-            color: rgba(255, 255, 255, 0.9);
-            white-space: pre;
-            max-height: 450px;
-            overflow: auto;
-            tab-size: 4;
-        }
-
-        .output::-webkit-scrollbar {
-            width: 8px;
-            height: 8px;
-        }
-
-        .output::-webkit-scrollbar-track {
-            background: rgba(255, 255, 255, 0.1);
-            border-radius: 4px;
-        }
-
-        .output::-webkit-scrollbar-thumb {
-            background: rgba(255, 255, 255, 0.3);
-            border-radius: 4px;
-        }
-
-        .output::-webkit-scrollbar-thumb:hover {
-            background: rgba(255, 255, 255, 0.5);
-        }
-
-        .button-group {
-            margin-top: 20px;
-        }
-
-        .output-section {
-            margin-bottom: 36px;
-        }
-
-        .alert {
-            padding: 20px 24px;
-            margin-bottom: 28px;
-            border-radius: 16px;
-            border: 1px solid rgba(255, 255, 255, 0.2);
-            background: rgba(243, 156, 18, 0.1);
-            backdrop-filter: blur(10px);
-            color: rgba(255, 255, 255, 0.9);
-        }
-
-        .results-layout {
-            margin-top: 28px;
-        }
-
-        .example {
-            background: rgba(255, 193, 7, 0.1);
-            border: 1px solid rgba(255, 193, 7, 0.3);
-            border-radius: 12px;
-            padding: 16px;
-            margin-top: 16px;
-            font-family: 'SF Mono', 'Monaco', 'Cascadia Code', 'Roboto Mono', monospace;
-            font-size: 13px;
-            color: rgba(255, 255, 255, 0.9);
-            line-height: 1.5;
-        }
-
-        @media (max-width: 768px) {
-            .container {
-                margin: 10px;
-                border-radius: 20px;
-            }
-            
-            .header {
-                padding: 28px 24px;
-            }
-            
-            .header h1 {
-                font-size: 2.2rem;
-            }
-            
-            .content {
-                padding: 28px 24px;
-            }
-            
-            .checkbox-group {
-                flex-direction: column;
-                gap: 16px;
-            }
-            
-            .nav a {
-                padding: 16px 24px;
-                font-size: 0.95rem;
-            }
-        }
-
-        @media (max-width: 480px) {
-            body {
-                padding: 10px;
-            }
-            
-            .nav a {
-                display: block;
-                text-align: center;
-                border-right: none;
-                border-bottom: 1px solid rgba(255, 255, 255, 0.1);
-            }
-            
-            .nav a:last-child {
-                border-bottom: none;
-            }
-        }
-    </style>
+    <link rel="stylesheet" href="shared-styles.css">
 </head>
 <body>
     <div class="container">
-        <div class="header">
+        <div class="header theme-orange">
             <h1>SQL 轉 Java sb.append()</h1>
             <p>將 SQL 語句轉換為 Java StringBuilder.append() 格式，支援註釋處理與排版優化</p>
         </div>
@@ -360,10 +20,11 @@
         </nav>
         
         <div class="content">
-            <div class="alert">
+            <div class="alert alert-info">
                 <strong>✨ 使用說明：</strong>
                 輸入 SQL 語句，工具會自動處理所有行的排版、註釋移動和駝峰命名轉換。HibernateScalarHelper 會根據是否勾選駝峰選項決定使用原始欄位名或 AS 別名。
-                <div class="example"><strong>轉換範例：</strong>
+                <div class="example">
+                    <strong>轉換範例：</strong>
 不勾選駝峰：
 SELECT a.CONTR_NO, b.USER_ID, c.AM_C_MST
 → HibernateScalarHelper 使用原始欄位名：CONTR_NO, USER_ID, AM_C_MST
@@ -371,6 +32,8 @@ SELECT a.CONTR_NO, b.USER_ID, c.AM_C_MST
 勾選駝峰：
 SELECT a.CONTR_NO AS contrNo, b.USER_ID AS userId, c.AM_C_MST AS amCMst
 → HibernateScalarHelper 使用 AS 別名：contrNo, userId, amCMst
+
+<strong>注意：nam 相關欄位不會進行駝峰轉換</strong>
                 </div>
             </div>
             
@@ -391,7 +54,7 @@ SELECT a.CONTR_NO AS contrNo, b.USER_ID AS userId, c.AM_C_MST AS amCMst
             </div>
             
             <div class="button-group">
-                <button id="convertSqlBtn" class="btn">🚀 轉換</button>
+                <button id="convertSqlBtn" class="btn theme-orange">🚀 轉換</button>
             </div>
             
             <div class="results-layout">
@@ -816,7 +479,7 @@ SELECT a.CONTR_NO AS contrNo, b.USER_ID AS userId, c.AM_C_MST AS amCMst
                             const btn = document.querySelector(`[data-copy-target="${id}"]`);
                             const originalText = btn.textContent;
                             btn.textContent = '✅ 已複製！';
-                            btn.style.background = 'linear-gradient(135deg, #27ae60 0%, #2ecc71 100%)';
+                            btn.style.background = 'linear-gradient(135deg, #16a34a 0%, #22c55e 100%)';
                             
                             setTimeout(() => {
                                 btn.textContent = originalText;
