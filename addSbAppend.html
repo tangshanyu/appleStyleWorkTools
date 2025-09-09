@@ -374,13 +374,22 @@
                 <div class="example"><strong>轉換範例：</strong>
 SELECT a.CONTR_NO --契約編號
     , b.USER_ID /* 使用者ID */
+    , c.AM_C_MST
 FROM table t --表格
 
 <strong>↓ 轉換後 ↓</strong>
 
 sb.append(" SELECT a.CONTR_NO "); //契約編號
 sb.append("     , b.USER_ID "); /* 使用者ID */
+sb.append("     , c.AM_C_MST ");
 sb.append(" FROM table t "); //表格
+
+<strong>↓ HibernateScalarHelper ↓</strong>
+
+List&lt;HibernateScalarHelper&gt; scalarList = new ArrayList&lt;&gt;();
+scalarList.add(new HibernateScalarHelper("contrNo", StandardBasicTypes.STRING));
+scalarList.add(new HibernateScalarHelper("userId", StandardBasicTypes.STRING));
+scalarList.add(new HibernateScalarHelper("amCMst", StandardBasicTypes.STRING));
                 </div>
             </div>
             
@@ -492,6 +501,72 @@ sb.append(" FROM table t "); //表格
             return indent.replace(/\t/g, '    ');
         }
 
+        // 解析完整的 SELECT 語句，支援多行和複雜結構
+        function parseSelectFields(sql) {
+            try {
+                // 移除所有註釋以便正確解析
+                let cleanSql = sql.replace(/--.*$/gm, '').replace(/\/\*[\s\S]*?\*\//g, '');
+                
+                // 找到 SELECT 和 FROM 的位置（不區分大小寫）
+                const selectMatch = cleanSql.match(/\bSELECT\s+/i);
+                const fromMatch = cleanSql.match(/\s+FROM\s+/i);
+                
+                if (!selectMatch || !fromMatch) {
+                    console.log('無法找到 SELECT 或 FROM 關鍵字');
+                    return [];
+                }
+                
+                const selectStart = selectMatch.index + selectMatch[0].length;
+                const fromStart = fromMatch.index;
+                
+                if (selectStart >= fromStart) {
+                    console.log('SELECT 和 FROM 位置錯誤');
+                    return [];
+                }
+                
+                // 提取 SELECT 和 FROM 之間的內容
+                const fieldsText = cleanSql.substring(selectStart, fromStart).trim();
+                
+                console.log('提取的欄位文本:', fieldsText);
+                
+                // 分割欄位，考慮括號內的逗號
+                const fields = [];
+                let currentField = '';
+                let parenthesesLevel = 0;
+                
+                for (let i = 0; i < fieldsText.length; i++) {
+                    const char = fieldsText[i];
+                    
+                    if (char === '(') {
+                        parenthesesLevel++;
+                        currentField += char;
+                    } else if (char === ')') {
+                        parenthesesLevel--;
+                        currentField += char;
+                    } else if (char === ',' && parenthesesLevel === 0) {
+                        // 找到欄位分隔符
+                        if (currentField.trim()) {
+                            fields.push(currentField.trim());
+                        }
+                        currentField = '';
+                    } else {
+                        currentField += char;
+                    }
+                }
+                
+                // 加入最後一個欄位
+                if (currentField.trim()) {
+                    fields.push(currentField.trim());
+                }
+                
+                console.log('分割後的欄位:', fields);
+                return fields;
+            } catch (error) {
+                console.error('解析 SELECT 欄位時發生錯誤:', error);
+                return [];
+            }
+        }
+
         function convertSql() {
             const sql = document.getElementById("sqlInput")?.value || "";
             const useCamelCaseAs = document.getElementById('camelCaseAsCheckbox')?.checked || false;
@@ -507,13 +582,25 @@ sb.append(" FROM table t "); //表格
             
             // 如果啟用駝峰命名 AS 別名，處理 SELECT 欄位
             if (useCamelCaseAs) {
-                processedSql = processedSql.replace(/SELECT\s+(.*?)\s+FROM/gi, (match, fields) => {
-                    const processedFields = fields.split(',').map(field => {
-                        field = field.trim();
+                // 使用更精確的方式處理多行 SELECT
+                const selectFields = parseSelectFields(processedSql);
+                
+                if (selectFields.length > 0) {
+                    const processedFields = selectFields.map(field => {
+                        // 先提取註釋（如果有的話）
+                        const originalField = field;
+                        let commentInfo = { code: field, comment: null, commentType: null };
                         
-                        // 先提取註釋
-                        const commentInfo = extractComments(field);
-                        field = commentInfo.code;
+                        // 檢查原始 SQL 中對應的行是否有註釋
+                        const sqlLines = sql.split('\n');
+                        for (let line of sqlLines) {
+                            if (line.includes(field.split(' ')[0])) {
+                                commentInfo = extractComments(line);
+                                break;
+                            }
+                        }
+                        
+                        field = commentInfo.code.trim();
                         
                         // 如果已經有 AS 別名，就不處理
                         if (field.toUpperCase().includes(' AS ')) {
@@ -529,10 +616,16 @@ sb.append(" FROM table t "); //表格
                         }
                         
                         // 移除函數包裝，例如 COUNT(AM_C_MST) -> AM_C_MST
-                        const functionMatch = fieldName.match(/\w+\((.+)\)/);
+                        const functionMatch = fieldName.match(/(\w+)\s*\(\s*([^)]+)\s*\)/);
                         if (functionMatch) {
-                            fieldName = functionMatch[1];
+                            fieldName = functionMatch[2].trim();
+                            if (fieldName.includes('.')) {
+                                fieldName = fieldName.split('.').pop();
+                            }
                         }
+                        
+                        // 移除多餘的空白和特殊字符
+                        fieldName = fieldName.replace(/[^\w]/g, '');
                         
                         // 如果欄位名包含底線，轉換為駝峰式命名
                         if (fieldName.includes('_')) {
@@ -544,9 +637,15 @@ sb.append(" FROM table t "); //表格
                         
                         return commentInfo.comment ? 
                             (commentInfo.commentType === 'single' ? `${field} --${commentInfo.comment}` : `${field} /* ${commentInfo.comment} */`) : field;
-                    }).join(', ');
-                    return `SELECT ${processedFields} FROM`;
-                });
+                    });
+                    
+                    // 重建 SELECT 語句
+                    const selectPart = processedFields.join(', ');
+                    processedSql = processedSql.replace(
+                        /SELECT\s+.*?\s+FROM/gis,
+                        `SELECT ${selectPart} FROM`
+                    );
+                }
             }
             
             // 轉換為 sb.append() 格式 - 處理所有行的註釋
@@ -606,58 +705,90 @@ sb.append(" FROM table t "); //表格
 
         function generateHibernateHelper(sql) {
             try {
-                // 提取 SELECT 欄位
-                const selectMatch = sql.match(/SELECT\s+(.*?)\s+FROM/gi);
-                if (selectMatch && selectMatch.length > 0) {
-                    const selectPart = selectMatch[0].replace(/SELECT\s+/gi, '').replace(/\s+FROM$/gi, '');
-                    const fields = selectPart.split(',').map(field => {
-                        const trimmed = field.trim();
-                        
-                        // 先移除註釋
-                        const commentInfo = extractComments(trimmed);
-                        const cleanField = commentInfo.code;
-                        
-                        // 檢查是否有 AS 別名
-                        const asMatch = cleanField.match(/\s+AS\s+(\w+)/i);
-                        if (asMatch) {
-                            return asMatch[1];
-                        }
-                        
-                        // 提取欄位名（移除表名前綴和函數）
-                        let fieldName = cleanField;
-                        if (fieldName.includes('.')) {
-                            fieldName = fieldName.split('.').pop();
-                        }
-                        
-                        // 處理函數，例如 COUNT(AM_C_MST) -> AM_C_MST
-                        const functionMatch = fieldName.match(/\w+\((.+)\)/);
-                        if (functionMatch) {
-                            fieldName = functionMatch[1];
-                        }
-                        
-                        return fieldName;
-                    });
-                    
-                    if (fields.length > 0) {
-                        // 生成 HibernateScalarHelper List 格式
-                        const hibernateList = fields.map(field => 
-                            `scalarList.add(new HibernateScalarHelper("${field}", StandardBasicTypes.STRING));`
-                        ).join('\n');
-                        
-                        const hibernateResult = `List<HibernateScalarHelper> scalarList = new ArrayList<>();\n${hibernateList}`;
-                        
-                        const hibernateOutput = document.getElementById("hibernateOutput");
-                        if (hibernateOutput) {
-                            hibernateOutput.textContent = hibernateResult;
-                        }
-                    }
-                } else {
+                console.log('開始生成 HibernateScalarHelper，SQL:', sql);
+                
+                // 使用新的解析方法
+                const selectFields = parseSelectFields(sql);
+                
+                if (selectFields.length === 0) {
                     const hibernateOutput = document.getElementById("hibernateOutput");
                     if (hibernateOutput) {
                         hibernateOutput.textContent = "無法識別 SELECT 語句，請檢查 SQL 格式";
                     }
+                    return;
+                }
+                
+                const fields = selectFields.map(field => {
+                    const trimmed = field.trim();
+                    
+                    console.log('處理欄位:', trimmed);
+                    
+                    // 先移除註釋
+                    const commentInfo = extractComments(trimmed);
+                    const cleanField = commentInfo.code.trim();
+                    
+                    // 檢查是否有 AS 別名
+                    const asMatch = cleanField.match(/\s+AS\s+(\w+)/i);
+                    if (asMatch) {
+                        const aliasName = asMatch[1];
+                        console.log('找到 AS 別名:', aliasName);
+                        return aliasName;
+                    }
+                    
+                    // 提取欄位名（移除表名前綴和函數）
+                    let fieldName = cleanField;
+                    
+                    // 處理函數，例如 COUNT(AM_C_MST) -> AM_C_MST
+                    const functionMatch = fieldName.match(/(\w+)\s*\(\s*([^)]+)\s*\)/);
+                    if (functionMatch) {
+                        fieldName = functionMatch[2].trim();
+                        console.log('提取函數內容:', fieldName);
+                    }
+                    
+                    // 移除表名前綴
+                    if (fieldName.includes('.')) {
+                        fieldName = fieldName.split('.').pop();
+                        console.log('移除表名前綴後:', fieldName);
+                    }
+                    
+                    // 移除多餘字符，只保留字母數字和底線
+                    fieldName = fieldName.replace(/[^\w]/g, '');
+                    
+                    // 轉換為駝峰式命名
+                    if (fieldName.includes('_')) {
+                        const camelCaseName = toCamelCase(fieldName);
+                        console.log('轉換為駝峰式命名:', fieldName, '->', camelCaseName);
+                        return camelCaseName;
+                    }
+                    
+                    console.log('最終欄位名:', fieldName);
+                    return fieldName;
+                }).filter(field => field && field.trim() !== '');
+                
+                console.log('所有處理後的欄位:', fields);
+                
+                if (fields.length > 0) {
+                    // 生成 HibernateScalarHelper List 格式
+                    const hibernateList = fields.map(field => 
+                        `scalarList.add(new HibernateScalarHelper("${field}", StandardBasicTypes.STRING));`
+                    ).join('\n');
+                    
+                    const hibernateResult = `List<HibernateScalarHelper> scalarList = new ArrayList<>();\n${hibernateList}`;
+                    
+                    const hibernateOutput = document.getElementById("hibernateOutput");
+                    if (hibernateOutput) {
+                        hibernateOutput.textContent = hibernateResult;
+                    }
+                    
+                    console.log('生成的 Hibernate 結果:', hibernateResult);
+                } else {
+                    const hibernateOutput = document.getElementById("hibernateOutput");
+                    if (hibernateOutput) {
+                        hibernateOutput.textContent = "無法提取到有效的欄位名";
+                    }
                 }
             } catch (error) {
+                console.error('生成 HibernateScalarHelper 時發生錯誤:', error);
                 const hibernateOutput = document.getElementById("hibernateOutput");
                 if (hibernateOutput) {
                     hibernateOutput.textContent = "生成 HibernateScalarHelper 時發生錯誤：" + error.message;
