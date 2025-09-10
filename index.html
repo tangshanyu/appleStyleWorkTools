@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>SQL 工具集</title>
     <link rel="stylesheet" href="shared-styles.css">
+    <script src="shared-navigation.js"></script>
 </head>
 <body>
     <div class="container">
@@ -14,16 +15,13 @@
         </div>
         
         <nav class="nav">
-            <a href="index.html" class="active">🏠 首頁</a>
-            <a href="putSpecSql.html">🔧 參數替換</a>
-            <a href="changeQuestionMark.html">❓ 問號轉換</a>
-            <a href="addSbAppend.html">☕ Java 轉換</a>
+            <!-- 共用導覽將由 JavaScript 自動載入 -->
         </nav>
         
         <div class="content">
             <div class="welcome">
                 <h2>歡迎使用 SQL 工具集</h2>
-                <p>這是一套專為 SQL 開發者設計的工具集合，採用現代化的液體玻璃設計風格，包含了常用的 SQL 處理功能，幫助您更高效地進行 SQL 開發工作。</p>
+                <p>這是一套專為開發者設計的工具集合，採用現代化的液體玻璃設計風格，包含了常用的程式處理功能，幫助您更高效地進行開發工作。</p>
             </div>
             
             <div class="tool-grid">
@@ -44,6 +42,12 @@
                     <p>將 SQL 語句轉換為 Java StringBuilder.append() 格式，支援駝峰命名、註釋處理、排版保持和 HibernateScalarHelper 生成。完美保持代碼格式。</p>
                     <a href="addSbAppend.html" class="btn">開始使用</a>
                 </div>
+
+                <div class="tool-card" onclick="location.href='jsParamConvert.html'">
+                    <h3>🔄 參數串轉物件工具</h3>
+                    <p>將 JavaScript 參數字串自動轉換為物件格式，支援 amPopUpWindowPost 格式轉換，包含 jQuery 選擇器和回調函數處理。提升前端開發效率。</p>
+                    <a href="jsParamConvert.html" class="btn">開始使用</a>
+                </div>
             </div>
             
             <div class="features">
@@ -55,7 +59,7 @@
                     </div>
                     <div class="feature-item">
                         <h4>🎯 精確處理</h4>
-                        <p>智能識別 SQL 結構，確保轉換準確性和格式完整性</p>
+                        <p>智能識別代碼結構，確保轉換準確性和格式完整性</p>
                     </div>
                     <div class="feature-item">
                         <h4>📱 響應式設計</h4>

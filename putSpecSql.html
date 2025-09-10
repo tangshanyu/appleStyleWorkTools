@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>SQL 參數替換工具</title>
     <link rel="stylesheet" href="shared-styles.css">
+    <script src="shared-navigation.js"></script>
 </head>
 <body>
     <div class="container">
@@ -14,9 +15,7 @@
         </div>
         
         <nav class="nav">
-            <a href="index.html">🏠 回首頁</a>
-            <a href="changeQuestionMark.html">❓ 問號轉換</a>
-            <a href="addSbAppend.html">☕ Java 轉換</a>
+            <!-- 共用導覽將由 JavaScript 自動載入 -->
         </nav>
         
         <div class="content">
@@ -37,7 +36,7 @@
             <div class="form-group">
                 <label>⚙️ 參數輸入：</label>
                 <div id="paramsContainer" class="params-container">
-                    <p style="color: rgba(255, 255, 255, 0.7);">請先點擊「掃描參數」來識別 SQL 中的參數</p>
+                    <p style="color: rgba(71, 85, 105, 0.7);">請先點擊「掃描參數」來識別 SQL 中的參數</p>
                 </div>
             </div>
             
@@ -82,7 +81,7 @@
                     </div>
                 `).join("");
             } else {
-                container.innerHTML = '<p style="color: rgba(231, 76, 60, 0.9);">未找到任何 \'ParmX\' 參數。請確認 SQL 語句中包含類似 \'Parm1\', \'Parm2\' 的參數。</p>';
+                container.innerHTML = '<p style="color: rgba(239, 68, 68, 0.9);">未找到任何 \'ParmX\' 參數。請確認 SQL 語句中包含類似 \'Parm1\', \'Parm2\' 的參數。</p>';
             }
         }
 

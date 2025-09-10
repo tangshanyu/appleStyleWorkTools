@@ -1,0 +1,266 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>參數字串物件化工具</title>
+    <link rel="stylesheet" href="shared-styles.css">
+    <script src="shared-navigation.js"></script>
+    <style>
+        .header.theme-green {
+            background: linear-gradient(135deg, rgba(22, 163, 74, 0.15) 0%, rgba(74, 222, 128, 0.15) 100%);
+        }
+        
+        .btn.theme-green {
+            background: linear-gradient(135deg, var(--theme-green) 0%, #22c55e 100%);
+        }
+        
+        .btn.theme-green:hover {
+            box-shadow: 0 8px 25px rgba(22, 163, 74, 0.25);
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header theme-green">
+            <h1>參數字串物件化工具</h1>
+            <p>將 JavaScript 參數串轉換成 amPopUpWindowPost 物件格式</p>
+        </div>
+        
+        <nav class="nav">
+            <!-- 共用導覽將由 JavaScript 自動載入 -->
+        </nav>
+        
+        <div class="content">
+            <div class="alert alert-info">
+                <strong>✨ 使用說明：</strong>
+                輸入包含參數串的 JavaScript 代碼，工具會自動解析並轉換為 <code>amPopUpWindowPost</code> 所需的物件格式。
+                <div class="example">
+                    <strong>輸入範例：</strong><br>
+                    var params = "criteria.wrtoffTxSn=" + $("#finSlnClsPosTxSn").val() +<br>
+                    "&criteria.contrNo=" + $("#contrNo").val() + <br>
+                    "&criteria.sn=1";<br><br>
+                    <strong>輸出範例：</strong><br>
+                    var url = "/dal/dal11032/process";<br>
+                    var paramObj = {<br>
+                    &nbsp;&nbsp;"progId": "AMDAL11032",<br>
+                    &nbsp;&nbsp;"criteria.wrtoffTxSn": $("#finSlnClsPosTxSn").val(),<br>
+                    &nbsp;&nbsp;...<br>
+                    };<br>
+                    amPopUpWindowPost({winSize: "L", url: url, params: paramObj});
+                </div>
+            </div>
+            
+            <div class="form-group">
+                <label for="rawInput">📝 原始參數代碼：</label>
+                <textarea id="rawInput" class="form-control" rows="12" 
+                    placeholder='貼上完整的參數代碼，例如：
+var params = "criteria.wrtoffTxSn=" + $("#finSlnClsPosTxSn").val() +
+"&criteria.contrNo=" + $("#contrNo").val() + 
+"&criteria.sn=1";'></textarea>
+            </div>
+            
+            <div class="checkbox-group">
+                <div class="checkbox-item">
+                    <input type="checkbox" id="includeAfterCall">
+                    <label for="includeAfterCall">🔧 包含 aftercall 回調函數</label>
+                </div>
+            </div>
+            
+            <div class="form-group" id="afterCallGroup" style="display: none;">
+                <label for="afterCallInput">📞 aftercall 函數名稱：</label>
+                <input id="afterCallInput" class="form-control" 
+                    placeholder="例如：myCallbackFunction" />
+            </div>
+            
+            <div class="button-group">
+                <button id="convertBtn" class="btn theme-green">🚀 轉換</button>
+                <button id="copyBtn" class="btn btn-success">📋 複製結果</button>
+                <button id="clearBtn" class="btn">🗑️ 清空</button>
+            </div>
+            
+            <div class="form-group">
+                <label>✨ 轉換後代碼：</label>
+                <div id="resultOutput" class="output">結果將顯示在這裡...</div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // 切換 aftercall 輸入框顯示
+        document.getElementById('includeAfterCall').addEventListener('change', function() {
+            const afterCallGroup = document.getElementById('afterCallGroup');
+            afterCallGroup.style.display = this.checked ? 'block' : 'none';
+        });
+
+        function parseParamsString(input) {
+            try {
+                // 清理輸入，移除 var params = 部分
+                let cleaned = input.replace(/var\s+params\s*=\s*/i, '').trim();
+                
+                // 移除開頭和結尾的引號和分號
+                cleaned = cleaned.replace(/^["']|["'];?$/g, '');
+                
+                // 提取 URL 部分（如果存在）
+                let url = "/dal/dal11032/process"; // 默認URL
+                const urlMatch = cleaned.match(/url:\s*["']([^"']+)["']/);
+                if (urlMatch) {
+                    url = urlMatch[1];
+                }
+                
+                // 解析參數
+                const paramObj = {};
+                
+                // 分割參數字串，處理連接符號 +
+                const parts = cleaned.split(/"\s*\+\s*"|\+\s*"/g);
+                
+                parts.forEach(part => {
+                    part = part.trim().replace(/^["']|["']$/g, '');
+                    
+                    // 尋找 key=value 模式
+                    if (part.includes('=')) {
+                        const paramMatches = part.match(/([^&=]+)=([^&]*)/g);
+                        
+                        if (paramMatches) {
+                            paramMatches.forEach(match => {
+                                const [key, ...valueParts] = match.split('=');
+                                const value = valueParts.join('=');
+                                
+                                if (key && key.trim()) {
+                                    const cleanKey = key.replace(/^&/, '').trim();
+                                    
+                                    // 處理不同類型的值
+                                    let cleanValue = value.trim();
+                                    
+                                    // 檢查是否是 jQuery 選擇器
+                                    const jqueryMatch = input.match(new RegExp(`["']${key.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}["']\\s*\\+\\s*([^"'\\+]+)`, 'i'));
+                                    if (jqueryMatch) {
+                                        cleanValue = jqueryMatch[1].trim();
+                                    }
+                                    
+                                    paramObj[cleanKey] = cleanValue;
+                                }
+                            });
+                        }
+                    }
+                });
+                
+                return { url, paramObj };
+            } catch (error) {
+                console.error('解析錯誤:', error);
+                throw new Error('無法解析參數格式，請檢查輸入');
+            }
+        }
+
+        function formatOutput(url, paramObj, includeAfterCall, afterCallFunction) {
+            // 添加固定參數
+            const finalParamObj = {
+                progId: "AMDAL11032",
+                progAction: "process",
+                ...paramObj
+            };
+            
+            const lines = [
+                `var url = "${url}";`,
+                "var paramObj = {"
+            ];
+            
+            // 格式化參數物件
+            const entries = Object.entries(finalParamObj);
+            entries.forEach(([key, value], index) => {
+                const isLast = index === entries.length - 1;
+                const comma = isLast ? '' : ',';
+                
+                // 處理值的格式
+                let formattedValue;
+                if (typeof value === 'string' && (value.includes('$("#') || value.includes("$('") || value.includes('.val()'))) {
+                    // jQuery 選擇器，保持原樣
+                    formattedValue = value;
+                } else if (typeof value === 'string' && value.includes('<s:property')) {
+                    // Struts 標籤，保持原樣並加引號
+                    formattedValue = `"${value}"`;
+                } else if (typeof value === 'string' && value.includes('.toNumber()')) {
+                    // 帶有 .toNumber() 的表達式
+                    formattedValue = value;
+                } else if (!isNaN(value) && value !== '' && typeof value !== 'string') {
+                    // 純數字
+                    formattedValue = value;
+                } else {
+                    // 字串，需要加引號，但要處理已經是表達式的情況
+                    if (typeof value === 'string' && (value.startsWith('"') || value.includes('('))) {
+                        formattedValue = value;
+                    } else {
+                        formattedValue = `"${value}"`;
+                    }
+                }
+                
+                lines.push(`    "${key}": ${formattedValue}${comma}`);
+            });
+            
+            lines.push("};");
+            
+            // 構建 amPopUpWindowPost 調用
+            const popupParams = [`winSize: "L"`, `url: url`, `params: paramObj`];
+            
+            if (includeAfterCall && afterCallFunction) {
+                popupParams.push(`aftercall: ${afterCallFunction}`);
+            }
+            
+            lines.push(`amPopUpWindowPost({${popupParams.join(', ')}});`);
+            
+            return lines.join('\n');
+        }
+
+        document.getElementById('convertBtn').addEventListener('click', () => {
+            const rawInput = document.getElementById('rawInput').value.trim();
+            
+            if (!rawInput) {
+                alert('請先輸入原始參數代碼');
+                return;
+            }
+            
+            try {
+                const { url, paramObj } = parseParamsString(rawInput);
+                const includeAfterCall = document.getElementById('includeAfterCall').checked;
+                const afterCallFunction = document.getElementById('afterCallInput').value.trim();
+                
+                const result = formatOutput(url, paramObj, includeAfterCall, afterCallFunction);
+                document.getElementById('resultOutput').textContent = result;
+            } catch (error) {
+                alert('解析失敗：' + error.message);
+                console.error('詳細錯誤:', error);
+            }
+        });
+
+        document.getElementById('copyBtn').addEventListener('click', () => {
+            const text = document.getElementById('resultOutput').textContent;
+            if (!text.trim() || text.includes('結果將顯示在這裡')) {
+                alert('請先轉換後再複製');
+                return;
+            }
+            
+            navigator.clipboard.writeText(text).then(() => {
+                const btn = document.getElementById('copyBtn');
+                const originalText = btn.textContent;
+                btn.textContent = '✅ 已複製！';
+                btn.style.background = 'linear-gradient(135deg, #16a34a 0%, #22c55e 100%)';
+                
+                setTimeout(() => {
+                    btn.textContent = originalText;
+                    btn.style.background = '';
+                }, 2000);
+            }).catch(err => {
+                alert('複製失敗，請手動複製');
+            });
+        });
+
+        document.getElementById('clearBtn').addEventListener('click', () => {
+            document.getElementById('rawInput').value = '';
+            document.getElementById('afterCallInput').value = '';
+            document.getElementById('includeAfterCall').checked = false;
+            document.getElementById('afterCallGroup').style.display = 'none';
+            document.getElementById('resultOutput').textContent = '結果將顯示在這裡...';
+        });
+    </script>
+</body>
+</html>
