@@ -6,6 +6,7 @@
     <title>SQL 參數替換工具</title>
     <link rel="stylesheet" href="shared-styles.css">
     <script src="shared-navigation.js"></script>
+    <script src="poorsql.js"></script>
 </head>
 <body>
     <div class="container">
@@ -109,7 +110,43 @@
             
             const output = document.getElementById("output");
             if (output) {
-                output.textContent = sql;
+                output.textContent = formatWithLocalPoorSql(sql);
+            }
+        }
+
+        // 本地 Poor SQL 格式化
+        function formatWithLocalPoorSql(sql) {
+            try {
+                // 檢查 Poor SQL 是否載入成功
+                if (typeof PoorMansTSqlFormatterLib === 'undefined') {
+                    throw new Error('Poor SQL 庫未正確載入');
+                }
+
+                // 使用 Poor SQL 格式化
+                const formatter = new PoorMansTSqlFormatterLib.Formatters.TSqlStandardFormatter();
+                
+                // 設定格式化選項
+                formatter.IndentString = '\t';       // 使用 tab 縮排
+                formatter.SpacesPerTab = 4;         // tab 等於 4 個空格
+                formatter.MaxLineWidth = 999;       // 最大行寬
+                formatter.NewStatementLineBreaks = 2; // 語句間換行
+                formatter.NewClauseLineBreaks = 1;   // 子句間換行
+                
+                // 建立解析器和格式化器
+                const parser = new PoorMansTSqlFormatterLib.Parsers.TSqlStandardParser();
+                const tokenizer = new PoorMansTSqlFormatterLib.Tokenizers.TSqlStandardTokenizer();
+                
+                // 格式化 SQL
+                const tokens = tokenizer.TokenizeSQL(sql);
+                const parsedTree = parser.ParseSQL(tokens);
+                const formattedSql = formatter.FormatSQLTree(parsedTree);
+                
+                return formattedSql;
+                
+            } catch (error) {
+                console.error('本地 Poor SQL 格式化失敗:', error);
+                // 回退到基本格式化
+                return basicFormat(sql);
             }
         }
 
