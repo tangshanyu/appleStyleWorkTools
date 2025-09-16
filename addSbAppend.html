@@ -364,9 +364,12 @@
             margin-top: 30px; 
             text-align: center; 
             padding: 20px; 
-            background: #f8fafc; 
+            background: var(--color-bg-1); 
             border-radius: 8px;
             border: 1px solid #e2e8f0;
+            display: flex;            /* 讓內容變成彈性盒 */
+            justify-content: center;  /* 水平置中 */
+            gap: 10px;                /* 按鈕之間的間距 */
         }
 
         .quick-actions h3 {
@@ -413,16 +416,16 @@
         
         <div class="content">
             <!-- Poor SQL 格式化方式選擇 -->
-            <div class="format-method-section">
+            <div class="header theme-blue">
                 <div class="format-method-title">
-                    🎯 SQL 格式化方式選擇
+                    <h1>🎯 SQL 格式化方式選擇</h1>
                 </div>
                 
                 <div class="format-options">
                     <label class="format-option active" id="option-local">
                         <input type="radio" name="formatMethod" value="local" checked>
                         <div>
-                            <strong>🗂️ 本地 Poor SQL</strong>
+                            <p>🗂️ 本地 Poor SQL</p>
                             <div style="font-size: 12px; color: #6b7280;">使用本地 poorsql.js（推薦）</div>
                         </div>
                     </label>
@@ -430,7 +433,7 @@
                     <label class="format-option" id="option-iframe">
                         <input type="radio" name="formatMethod" value="iframe">
                         <div>
-                            <strong>🌐 Poor SQL 網頁</strong>
+                            <p>🌐 Poor SQL 網頁</p>
                             <div style="font-size: 12px; color: #6b7280;">嵌入式網頁格式化</div>
                         </div>
                     </label>
@@ -438,7 +441,7 @@
                     <label class="format-option" id="option-manual">
                         <input type="radio" name="formatMethod" value="manual">
                         <div>
-                            <strong>✋ 手動輸入</strong>
+                            <p>✋ 手動輸入</p>
                             <div style="font-size: 12px; color: #6b7280;">自行處理格式化</div>
                         </div>
                     </label>
@@ -465,112 +468,107 @@
             </div>
             <div class="workflow-container">
                 <!-- 步驟 1: 原始 SQL 輸入 -->
-                <div class="workflow-step">
+                <div class="header theme-blue">
                     <div class="step-header">
                         <div class="step-title">
                             <div class="step-number">1</div>
-                            原始 SQL 輸入
+                            <h2>原始 SQL 輸入</h2>
                         </div>
-                        <button class="copy-btn" onclick="copyToClipboard('sqlInput')">📋 複製</button>
+                        <button class="btn" onclick="copyToClipboard('sqlInput')">📋 複製</button>
                     </div>
                     <textarea 
                         id="sqlInput" 
-                        class="step-textarea" 
+                        class="form-control" 
                         placeholder="請在此輸入您的原始 SQL 語句..."></textarea>
                     <div class="action-buttons">
-                        <button class="action-btn" onclick="clearStep(1)">🗑️ 清空</button>
-                        <button class="action-btn" onclick="loadTestSql()">🧪 載入測試資料</button>
+                        <button class="btn" onclick="clearStep(1)">🗑️ 清空</button>
+                        <button class="btn" onclick="loadTestSql()">🧪 載入測試資料</button>
+                    </div>
+                </div>
+                <!-- 處理選項 -->
+                <div class="options-section">
+                    <div class="options-title">⚙️ 後續處理選項</div>
+                    <div class="option-group">
+                        <div class="option-item">
+                            <input type="checkbox" id="camelCaseAsCheckbox">
+                            <label for="camelCaseAsCheckbox">🐪 SELECT 欄位使用駝峰命名 AS 別名</label>
+                        </div>
+                        <div class="option-item">
+                            <input type="checkbox" id="hibernateCheckbox" checked>
+                            <label for="hibernateCheckbox">🏗️ 產生 HibernateScalarHelper</label>
+                        </div>
                     </div>
                 </div>
                  <!-- 格式化按鈕 -->
                 <div class="action-buttons">
-                    <button class="action-btn" onclick="executePoorSqlFormat()">
+                    <button class="btn" onclick="executePoorSqlFormat()">
                         🎨 執行 Poor SQL 格式化
                     </button>
-                    <button class="action-btn" id="get-from-poorsql-btn" onclick="getFromPoorSql()" style="display: none; background: #10b981;">
+                    <button class="btn" id="get-from-poorsql-btn" onclick="getFromPoorSql()" style="display: none; background: #10b981;">
                         📥 從 Poor SQL 取得結果
+                    </button>
+                    <button class="btn" onclick="executeAllSteps()">
+                    ⚡ 執行所有步驟
+                    </button>
+                    <button class="btn clear-all-btn" onclick="clearAllSteps()">
+                        🗑️ 清空所有
                     </button>
                 </div>
                 <!-- 步驟 2: 格式化後 SQL -->
-                <div class="workflow-step">
+                <div class="form-group">
                     <div class="step-header">
                         <div class="step-title">
                             <div class="step-number">2</div>
-                            格式化後 SQL (Poor SQL)
+                            <h2>格式化後 SQL (Poor SQL)</h2>
                             <span class="status-indicator status-empty" id="status2"></span>
                         </div>
-                        <button class="copy-btn" onclick="copyToClipboard('formattedSql')">📋 複製</button>
+                        <button class="btn" onclick="copyToClipboard('formattedSql')">📋 複製</button>
                     </div>
-                    <div id="formattedSql" class="step-output">
+                    <div id="formattedSql" class="output">
                         <div class="placeholder-text">請先在上方選擇格式化方式並執行 Poor SQL 格式化</div>
                     </div>
                     <div class="action-buttons">
-                        <button class="action-btn" onclick="clearStep(2)">🗑️ 清空</button>
-                        <button class="action-btn" onclick="editFormattedSql()">✏️ 手動編輯</button>
+                        <button class="btn" onclick="clearStep(2)">🗑️ 清空</button>
+                        <button class="btn" onclick="editFormattedSql()">✏️ 手動編輯</button>
                     </div>
                 </div>
-            <!-- 處理選項 -->
-            <div class="options-section">
-                <div class="options-title">⚙️ 後續處理選項</div>
-                <div class="option-group">
-                    <div class="option-item">
-                        <input type="checkbox" id="camelCaseAsCheckbox">
-                        <label for="camelCaseAsCheckbox">🐪 SELECT 欄位使用駝峰命名 AS 別名</label>
-                    </div>
-                    <div class="option-item">
-                        <input type="checkbox" id="hibernateCheckbox">
-                        <label for="hibernateCheckbox">🏗️ 產生 HibernateScalarHelper</label>
-                    </div>
-                </div>
-            </div>
                 <!-- 步驟 3: sb.append() 結果 -->
-                <div class="workflow-step">
+                <div class="form-group">
                     <div class="step-header">
                         <div class="step-title">
                             <div class="step-number">3</div>
-                            sb.append() 結果
+                            <h2>sb.append() 結果</h2>
                             <span class="status-indicator status-empty" id="status3"></span>
                         </div>
-                        <button class="copy-btn" onclick="copyToClipboard('sbAppendOutput')">📋 複製</button>
+                        <button class="btn" onclick="copyToClipboard('sbAppendOutput')">📋 複製</button>
                     </div>
-                    <div id="sbAppendOutput" class="step-output">
+                    <div id="sbAppendOutput" class="output">
                         <div class="placeholder-text">先完成步驟 2，然後點擊「轉換為 sb.append()」</div>
                     </div>
                     <div class="action-buttons">
-                        <button class="action-btn" onclick="convertToSbAppend()">⚡ 轉換為 sb.append()</button>
-                        <button class="action-btn" onclick="clearStep(3)">🗑️ 清空</button>
+                        <button class="btn" onclick="convertToSbAppend()">⚡ 轉換為 sb.append()</button>
+                        <button class="btn" onclick="clearStep(3)">🗑️ 清空</button>
                     </div>
                 </div>
 
                 <!-- 步驟 4: HibernateScalarHelper -->
-                <div class="workflow-step">
+                <div class="form-group">
                     <div class="step-header">
                         <div class="step-title">
                             <div class="step-number">4</div>
-                            HibernateScalarHelper
+                            <h2>HibernateScalarHelper</h2>
                             <span class="status-indicator status-empty" id="status4"></span>
                         </div>
-                        <button class="copy-btn" onclick="copyToClipboard('hibernateOutput')">📋 複製</button>
+                        <button class="btn" onclick="copyToClipboard('hibernateOutput')">📋 複製</button>
                     </div>
-                    <div id="hibernateOutput" class="step-output">
+                    <div id="hibernateOutput" class="output">
                         <div class="placeholder-text">勾選「產生 HibernateScalarHelper」選項，然後執行步驟 3</div>
                     </div>
                     <div class="action-buttons">
-                        <button class="action-btn" onclick="generateHibernateHelper()">🏗️ 生成 HibernateScalarHelper</button>
-                        <button class="action-btn" onclick="clearStep(4)">🗑️ 清空</button>
+                        <button class="btn" onclick="generateHibernateHelper()">🏗️ 生成 HibernateScalarHelper</button>
+                        <button class="btn" onclick="clearStep(4)">🗑️ 清空</button>
                     </div>
                 </div>
-            </div>
-
-            <!-- 快捷操作區 -->
-            <div class="quick-actions">
-                <h3>🚀 一鍵執行</h3>
-                <button class="action-btn" onclick="executeAllSteps()">
-                    ⚡ 執行所有步驟
-                </button>
-                <button class="action-btn clear-all-btn" onclick="clearAllSteps()">
-                    🗑️ 清空所有
-                </button>
             </div>
         </div>
     </div>
