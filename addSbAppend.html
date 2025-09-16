@@ -5,8 +5,9 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>SQL 轉 Java sb.append() 工具</title>
     <link rel="stylesheet" href="shared-styles.css">
-    <script src="https://cdn.jsdelivr.net/npm/sql-formatter/dist/sql-formatter.min.js"></script>
     <script src="shared-navigation.js"></script>
+    <!-- 引入 Poor SQL 本地格式化庫 -->
+    <script src="poorsql.js"></script>
     <style>
         .header.theme-orange {
             background: linear-gradient(135deg, rgba(249, 115, 22, 0.12) 0%, rgba(251, 146, 60, 0.1) 100%);
@@ -14,26 +15,388 @@
         
         .btn.theme-orange {
             background: linear-gradient(135deg, var(--theme-orange) 0%, #f97316 100%);
+            color: white;
+            font-weight: 600;
+            padding: 12px 24px;
+            font-size: 16px;
         }
         
         .btn.theme-orange:hover {
             box-shadow: 0 8px 25px rgba(249, 115, 22, 0.3);
-        }
-        
-        .format-info {
-            background: rgba(251, 191, 36, 0.05);
-            border: 1px solid rgba(251, 191, 36, 0.15);
-            border-radius: var(--border-radius-small);
-            padding: 12px 16px;
-            margin-bottom: 16px;
-            font-size: 0.9rem;
-            color: var(--text-secondary);
+            transform: translateY(-1px);
         }
 
-        #sqlInput, .output {
+        .format-method-section {
+            background: #f0f9ff;
+            border: 2px solid #0ea5e9;
+            border-radius: 12px;
+            padding: 20px;
+            margin-bottom: 24px;
+        }
+
+        .format-method-title {
+            font-size: 20px;
+            font-weight: 700;
+            color: #0c4a6e;
+            margin-bottom: 16px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .format-options {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 16px;
+            margin-bottom: 20px;
+        }
+
+        .format-option {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 12px 16px;
+            border: 2px solid #e2e8f0;
+            border-radius: 8px;
+            cursor: pointer;
+            background: white;
+            transition: all 0.3s;
+            font-weight: 500;
+        }
+
+        .format-option:hover {
+            border-color: #0ea5e9;
+            background: #f0f9ff;
+        }
+
+        .format-option.active {
+            border-color: #0ea5e9;
+            background: #dbeafe;
+        }
+
+        .format-option input[type="radio"] {
+            width: 18px;
+            height: 18px;
+            margin: 0;
+        }
+
+        .iframe-container {
+            display: none;
+            margin-top: 20px;
+            border: 2px solid #e2e8f0;
+            border-radius: 8px;
+            overflow: hidden;
+        }
+
+        .iframe-header {
+            background: #f8fafc;
+            padding: 12px 16px;
+            border-bottom: 1px solid #e2e8f0;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .iframe-header h4 {
+            margin: 0;
+            color: #1f2937;
+            font-size: 16px;
+        }
+
+        .iframe-refresh-btn {
+            background: #10b981;
+            color: white;
+            border: none;
+            padding: 6px 12px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 14px;
+        }
+
+        .iframe-refresh-btn:hover {
+            background: #059669;
+        }
+
+        .poor-sql-iframe {
+            width: 100%;
+            height: 500px;
+            border: none;
+        }
+
+        .local-section {
+            display: block;
+            margin-top: 20px;
+            padding: 16px;
+            background: #f0fdf4;
+            border-radius: 8px;
+            border: 1px solid #22c55e;
+        }
+
+        .local-info {
+            color: #15803d;
+            font-size: 14px;
+            margin-bottom: 12px;
+        }
+
+        .workflow-container {
+            display: flex;
+            flex-direction: column;
+            gap: 24px;
+            margin-top: 20px;
+        }
+
+        .workflow-step {
+            border: 2px solid #e5e7eb;
+            border-radius: 12px;
+            padding: 20px;
+            background: white;
+            position: relative;
+            transition: all 0.3s ease;
+        }
+
+        .workflow-step:hover {
+            border-color: #f97316;
+            box-shadow: 0 4px 12px rgba(249, 115, 22, 0.1);
+        }
+
+        .step-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 12px;
+            padding-bottom: 12px;
+            border-bottom: 1px solid #e5e7eb;
+        }
+
+        .step-title {
+            font-size: 18px;
+            font-weight: 700;
+            color: #1f2937;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .step-number {
+            background: #f97316;
+            color: white;
+            width: 28px;
+            height: 28px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 700;
+            font-size: 14px;
+        }
+
+        .step-textarea {
+            width: 100%;
+            min-height: 200px;
             font-family: 'Courier New', Consolas, 'Lucida Console', monospace;
+            font-size: 14px;
+            border: 1px solid #d1d5db;
+            border-radius: 6px;
+            padding: 12px;
+            resize: vertical;
+            line-height: 1.5;
             tab-size: 4;
             white-space: pre;
+            color: #1f2937;
+            background-color: white;
+        }
+
+        .step-textarea:focus {
+            border-color: #f97316;
+            box-shadow: 0 0 0 3px rgba(249, 115, 22, 0.1);
+            outline: none;
+        }
+
+        .step-output {
+            width: 100%;
+            min-height: 200px;
+            font-family: 'Courier New', Consolas, 'Lucida Console', monospace;
+            font-size: 14px;
+            border: 1px solid #d1d5db;
+            border-radius: 6px;
+            padding: 12px;
+            background-color: #f8fafc;
+            line-height: 1.5;
+            tab-size: 4;
+            white-space: pre;
+            overflow-x: auto;
+            color: #1f2937;
+        }
+
+        .copy-btn {
+            background: #10b981;
+            color: white;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: 600;
+            font-size: 14px;
+            transition: all 0.2s;
+        }
+
+        .copy-btn:hover {
+            background: #059669;
+            transform: translateY(-1px);
+        }
+
+        .copy-btn.copied {
+            background: #22c55e;
+        }
+
+        .action-buttons {
+            display: flex;
+            gap: 12px;
+            margin-top: 16px;
+            flex-wrap: wrap;
+        }
+
+        .action-btn {
+            background: #f97316;
+            color: white;
+            border: none;
+            padding: 12px 20px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: 600;
+            font-size: 15px;
+            transition: all 0.2s;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .action-btn:hover {
+            background: #ea580c;
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px rgba(249, 115, 22, 0.3);
+        }
+
+        .action-btn:disabled {
+            background: #9ca3af;
+            cursor: not-allowed;
+            transform: none;
+            box-shadow: none;
+        }
+
+        .options-section {
+            background: #fef3c7;
+            border: 1px solid #f59e0b;
+            border-radius: 8px;
+            padding: 16px;
+            margin-bottom: 20px;
+        }
+
+        .options-title {
+            font-weight: 600;
+            color: #92400e;
+            margin-bottom: 12px;
+        }
+
+        .option-group {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 16px;
+        }
+
+        .option-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .option-item input[type="checkbox"] {
+            width: 18px;
+            height: 18px;
+        }
+
+        .option-item label {
+            color: #1f2937;
+            font-weight: 500;
+        }
+
+        .placeholder-text {
+            color: #6b7280;
+            font-style: italic;
+            padding: 20px;
+            text-align: center;
+            background-color: transparent;
+        }
+
+        .status-indicator {
+            display: inline-block;
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            margin-right: 8px;
+        }
+
+        .status-ready { background: #22c55e; }
+        .status-pending { background: #f59e0b; }
+        .status-empty { background: #9ca3af; }
+
+        .workflow-step * {
+            color: #1f2937;
+        }
+
+        .workflow-step .placeholder-text {
+            color: #6b7280;
+        }
+
+        .workflow-step .copy-btn {
+            color: white;
+        }
+
+        .workflow-step .action-btn {
+            color: white;
+        }
+
+        .workflow-step .step-number {
+            color: white;
+        }
+
+        .quick-actions {
+            margin-top: 30px; 
+            text-align: center; 
+            padding: 20px; 
+            background: #f8fafc; 
+            border-radius: 8px;
+            border: 1px solid #e2e8f0;
+        }
+
+        .quick-actions h3 {
+            margin-bottom: 15px;
+            color: #1f2937;
+            font-size: 20px;
+        }
+
+        .quick-actions .action-btn {
+            font-size: 16px; 
+            padding: 15px 30px;
+        }
+
+        .quick-actions .clear-all-btn {
+            background: #ef4444; 
+            margin-left: 15px;
+        }
+
+        .quick-actions .clear-all-btn:hover {
+            background: #dc2626;
+        }
+
+        .format-instruction {
+            background: #ecfdf5;
+            border: 1px solid #10b981;
+            border-radius: 6px;
+            padding: 12px;
+            margin-top: 16px;
+            font-size: 14px;
+            color: #065f46;
         }
     </style>
 </head>
@@ -41,7 +404,7 @@
     <div class="container">
         <div class="header theme-orange">
             <h1>SQL 轉 Java sb.append()</h1>
-            <p>精準 SQL 格式化工具，完美匹配標準格式</p>
+            <p>整合本地 Poor SQL 格式化 + 四步驟轉換流程</p>
         </div>
         
         <nav class="nav">
@@ -49,504 +412,508 @@
         </nav>
         
         <div class="content">
-            <div class="alert alert-info">
-                <strong>✨ 使用說明：</strong>
-                輸入 SQL 語句，工具會精準格式化為標準格式，包括正確的 Tab 縮排、逗號前置、註釋保留和子查詢處理。
-            </div>
-            
-            <div class="form-group">
-                <label for="sqlInput">📝 輸入 SQL：</label>
-                <textarea id="sqlInput" class="form-control" placeholder="請輸入 SQL 語句..." rows="20" style="font-family: 'Courier New', monospace; tab-size: 4;"></textarea>
-            </div>
-            
-            <div class="format-info">
-                <strong>💡 精準格式：</strong> 完全符合標準格式，包括獨立註釋行、子查詢縮排、CASE 語句對齊。
-            </div>
-            
-            <div class="checkbox-group">
-                <div class="checkbox-item">
-                    <input type="checkbox" id="camelCaseAsCheckbox">
-                    <label for="camelCaseAsCheckbox">🐪 SELECT 欄位使用駝峰命名 AS 別名</label>
-                </div>
-                <div class="checkbox-item">
-                    <input type="checkbox" id="hibernateCheckbox">
-                    <label for="hibernateCheckbox">🏗️ 產生 HibernateScalarHelper</label>
-                </div>
-            </div>
-            
-            <div class="button-group">
-                <button id="convertSqlBtn" class="btn theme-orange">🚀 轉換</button>
-                <button id="formatOnlyBtn" class="btn">🎨 僅格式化 SQL</button>
-                <button id="clearBtn" class="btn">🗑️ 清空</button>
-            </div>
-            
-            <div class="results-layout">
-                <div class="output-section">
-                    <div class="form-group">
-                        <label>⚡ sb.append() 結果：</label>
-                        <div id="sbAppendOutput" class="output">sb.append() 結果將在這裡顯示...</div>
-                    </div>
-                    <div class="button-group">
-                        <button class="btn btn-success copy-button" data-copy-target="sbAppendOutput">📋 複製</button>
-                    </div>
+            <!-- Poor SQL 格式化方式選擇 -->
+            <div class="format-method-section">
+                <div class="format-method-title">
+                    🎯 SQL 格式化方式選擇
                 </div>
                 
-                <div class="output-section">
-                    <div class="form-group">
-                        <label>🏗️ HibernateScalarHelper List：</label>
-                        <div id="hibernateOutput" class="output">HibernateScalarHelper 結果將在這裡顯示...</div>
-                    </div>
-                    <div class="button-group">
-                        <button class="btn btn-success copy-button" data-copy-target="hibernateOutput">📋 複製</button>
+                <div class="format-options">
+                    <label class="format-option active" id="option-local">
+                        <input type="radio" name="formatMethod" value="local" checked>
+                        <div>
+                            <strong>🗂️ 本地 Poor SQL</strong>
+                            <div style="font-size: 12px; color: #6b7280;">使用本地 poorsql.js（推薦）</div>
+                        </div>
+                    </label>
+                    
+                    <label class="format-option" id="option-iframe">
+                        <input type="radio" name="formatMethod" value="iframe">
+                        <div>
+                            <strong>🌐 Poor SQL 網頁</strong>
+                            <div style="font-size: 12px; color: #6b7280;">嵌入式網頁格式化</div>
+                        </div>
+                    </label>
+                    
+                    <label class="format-option" id="option-manual">
+                        <input type="radio" name="formatMethod" value="manual">
+                        <div>
+                            <strong>✋ 手動輸入</strong>
+                            <div style="font-size: 12px; color: #6b7280;">自行處理格式化</div>
+                        </div>
+                    </label>
+                </div>
+
+                <!-- 本地 Poor SQL 說明區 -->
+                <div class="local-section" id="local-section">
+                    <div class="local-info">
+                        🗂️ 使用本地 poorsql.js 進行格式化，完全離線運作，速度快且穩定。
                     </div>
                 </div>
+
+                <!-- iframe 區域 -->
+                <div class="iframe-container" id="iframe-container">
+                    <div class="iframe-header">
+                        <h4>🌐 Poor SQL 線上格式化工具</h4>
+                        <button class="iframe-refresh-btn" onclick="refreshPoorSqlIframe()">🔄 重新載入</button>
+                    </div>
+                    <iframe id="poor-sql-iframe" class="poor-sql-iframe" src="https://poorsql.com/"></iframe>
+                    <div class="format-instruction">
+                        💡 <strong>使用說明：</strong> 在上方 Poor SQL 網頁中貼上您的 SQL，格式化完成後複製結果，然後點擊下方「從 Poor SQL 取得結果」按鈕。
+                    </div>
+                </div>
+            </div>
+            <div class="workflow-container">
+                <!-- 步驟 1: 原始 SQL 輸入 -->
+                <div class="workflow-step">
+                    <div class="step-header">
+                        <div class="step-title">
+                            <div class="step-number">1</div>
+                            原始 SQL 輸入
+                        </div>
+                        <button class="copy-btn" onclick="copyToClipboard('sqlInput')">📋 複製</button>
+                    </div>
+                    <textarea 
+                        id="sqlInput" 
+                        class="step-textarea" 
+                        placeholder="請在此輸入您的原始 SQL 語句..."></textarea>
+                    <div class="action-buttons">
+                        <button class="action-btn" onclick="clearStep(1)">🗑️ 清空</button>
+                        <button class="action-btn" onclick="loadTestSql()">🧪 載入測試資料</button>
+                    </div>
+                </div>
+                 <!-- 格式化按鈕 -->
+                <div class="action-buttons">
+                    <button class="action-btn" onclick="executePoorSqlFormat()">
+                        🎨 執行 Poor SQL 格式化
+                    </button>
+                    <button class="action-btn" id="get-from-poorsql-btn" onclick="getFromPoorSql()" style="display: none; background: #10b981;">
+                        📥 從 Poor SQL 取得結果
+                    </button>
+                </div>
+                <!-- 步驟 2: 格式化後 SQL -->
+                <div class="workflow-step">
+                    <div class="step-header">
+                        <div class="step-title">
+                            <div class="step-number">2</div>
+                            格式化後 SQL (Poor SQL)
+                            <span class="status-indicator status-empty" id="status2"></span>
+                        </div>
+                        <button class="copy-btn" onclick="copyToClipboard('formattedSql')">📋 複製</button>
+                    </div>
+                    <div id="formattedSql" class="step-output">
+                        <div class="placeholder-text">請先在上方選擇格式化方式並執行 Poor SQL 格式化</div>
+                    </div>
+                    <div class="action-buttons">
+                        <button class="action-btn" onclick="clearStep(2)">🗑️ 清空</button>
+                        <button class="action-btn" onclick="editFormattedSql()">✏️ 手動編輯</button>
+                    </div>
+                </div>
+            <!-- 處理選項 -->
+            <div class="options-section">
+                <div class="options-title">⚙️ 後續處理選項</div>
+                <div class="option-group">
+                    <div class="option-item">
+                        <input type="checkbox" id="camelCaseAsCheckbox">
+                        <label for="camelCaseAsCheckbox">🐪 SELECT 欄位使用駝峰命名 AS 別名</label>
+                    </div>
+                    <div class="option-item">
+                        <input type="checkbox" id="hibernateCheckbox">
+                        <label for="hibernateCheckbox">🏗️ 產生 HibernateScalarHelper</label>
+                    </div>
+                </div>
+            </div>
+                <!-- 步驟 3: sb.append() 結果 -->
+                <div class="workflow-step">
+                    <div class="step-header">
+                        <div class="step-title">
+                            <div class="step-number">3</div>
+                            sb.append() 結果
+                            <span class="status-indicator status-empty" id="status3"></span>
+                        </div>
+                        <button class="copy-btn" onclick="copyToClipboard('sbAppendOutput')">📋 複製</button>
+                    </div>
+                    <div id="sbAppendOutput" class="step-output">
+                        <div class="placeholder-text">先完成步驟 2，然後點擊「轉換為 sb.append()」</div>
+                    </div>
+                    <div class="action-buttons">
+                        <button class="action-btn" onclick="convertToSbAppend()">⚡ 轉換為 sb.append()</button>
+                        <button class="action-btn" onclick="clearStep(3)">🗑️ 清空</button>
+                    </div>
+                </div>
+
+                <!-- 步驟 4: HibernateScalarHelper -->
+                <div class="workflow-step">
+                    <div class="step-header">
+                        <div class="step-title">
+                            <div class="step-number">4</div>
+                            HibernateScalarHelper
+                            <span class="status-indicator status-empty" id="status4"></span>
+                        </div>
+                        <button class="copy-btn" onclick="copyToClipboard('hibernateOutput')">📋 複製</button>
+                    </div>
+                    <div id="hibernateOutput" class="step-output">
+                        <div class="placeholder-text">勾選「產生 HibernateScalarHelper」選項，然後執行步驟 3</div>
+                    </div>
+                    <div class="action-buttons">
+                        <button class="action-btn" onclick="generateHibernateHelper()">🏗️ 生成 HibernateScalarHelper</button>
+                        <button class="action-btn" onclick="clearStep(4)">🗑️ 清空</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 快捷操作區 -->
+            <div class="quick-actions">
+                <h3>🚀 一鍵執行</h3>
+                <button class="action-btn" onclick="executeAllSteps()">
+                    ⚡ 執行所有步驟
+                </button>
+                <button class="action-btn clear-all-btn" onclick="clearAllSteps()">
+                    🗑️ 清空所有
+                </button>
             </div>
         </div>
     </div>
 
-    <script type="module">
-        // 精準欄位解析 - 完全符合標準
-        function parseFieldsAdvanced(content) {
-            const fields = [];
-            let current = '';
-            let parens = 0;
-            let inQuotes = false;
-            let quoteChar = '';
-            let inBlockComment = false;
-            
-            for (let i = 0; i < content.length; i++) {
-                const char = content[i];
-                const nextChar = i < content.length - 1 ? content[i + 1] : '';
-                
-                // 處理塊註釋
-                if (!inQuotes && char === '/' && nextChar === '*') {
-                    inBlockComment = true;
-                    current += char;
-                } else if (inBlockComment && char === '*' && nextChar === '/') {
-                    inBlockComment = false;
-                    current += char + nextChar;
-                    i++; // 跳過下一個字符
-                } else if (inBlockComment) {
-                    current += char;
-                }
-                // 處理引號
-                else if (!inBlockComment && (char === '"' || char === "'")) {
-                    if (!inQuotes) {
-                        inQuotes = true;
-                        quoteChar = char;
-                    } else if (char === quoteChar) {
-                        inQuotes = false;
-                        quoteChar = '';
-                    }
-                    current += char;
-                }
-                // 處理括號
-                else if (!inQuotes && !inBlockComment && char === '(') {
-                    parens++;
-                    current += char;
-                } else if (!inQuotes && !inBlockComment && char === ')') {
-                    parens--;
-                    current += char;
-                }
-                // 處理逗號分隔符
-                else if (!inQuotes && !inBlockComment && char === ',' && parens === 0) {
-                    const trimmedField = current.trim();
-                    if (trimmedField) {
-                        fields.push(trimmedField);
-                    }
-                    current = '';
-                } else {
-                    current += char;
-                }
-            }
-            
-            // 加入最後一個欄位
-            const trimmedField = current.trim();
-            if (trimmedField) {
-                fields.push(trimmedField);
-            }
-            
-            return fields;
-        }
+    <script>
+        // 測試用 SQL
+        const TEST_SQL = `SELECT CB_DTA.CONTR_NO, CB_DTA.SELL_DEAL_ACC_DATE, CB_DTA.SELL_VLU_ACC_DATE, CB_DTA.SELL_SETT_ACC_DATE, CB_DTA.STCURR, CB_DTA.FIN_ASET_CTG_OPT_CTG, CB_DTA.FIN_ASET_CTG, CB_DTA.ACC_CTG, e.ACC_BASE, e.EVCURR, e.BIZ_CTG_1, f.TAX_FREE_MARK, e.BSCURR_FEXG_TYP, e.FEXG_TYP, e.NO_DIRRATE_YN_USE_CROSSRATE, t.CURR_DCML_LSD, SUM(CB_DTA.SELL_COST) AS TOT_SELL_COST, SUM(CB_DTA.SELL_DEAL_AMT) AS TOT_SELL_DEAL_AMT, SUM(CB_DTA.SELL_SETT_AMT) AS TOT_SELL_SETT_AMT FROM ( SELECT '1202-3000' AS ACC_PRD_COMB, ad.CONTR_NO, ad.ACC_CTG, ad.SELL_DEAL_DATE, ad.SELL_DEAL_ACC_DATE, ad.SELL_SETT_DATE, ad.SELL_SETT_ACC_DATE, ad.SELL_VLU_DATE, ad.SELL_VLU_ACC_DATE, ad.STCURR, ad.FIN_ASET_CTG_OPT_CTG, ad.FIN_ASET_CTG FROM AM_TX_SELL_CB ad WHERE ad.CONTR_NO IN ('Parm1') AND ad.FIN_ASET_CTG = '01' ) CB_DTA JOIN AM_C_MST e ON CB_DTA.CONTR_NO = e.CONTR_NO JOIN AM_C_SUB_CB f ON e.CONTR_NO = f.CONTR_NO JOIN COMM_CURR t ON t.CURR_CDE = e.EVCURR GROUP BY CB_DTA.CONTR_NO, CB_DTA.FIN_ASET_CTG_OPT_CTG ORDER BY CB_DTA.CONTR_NO, CB_DTA.FIN_ASET_CTG_OPT_CTG`;
 
-        // 關鍵字大寫處理
-        function uppercaseKeywords(sql) {
-            const keywords = [
-                'SELECT', 'FROM', 'WHERE', 'ORDER BY', 'GROUP BY', 'HAVING', 
-                'INSERT', 'UPDATE', 'DELETE', 'CREATE', 'ALTER', 'DROP',
-                'INNER JOIN', 'LEFT JOIN', 'RIGHT JOIN', 'FULL JOIN', 'JOIN',
-                'UNION', 'UNION ALL', 'INTERSECT', 'EXCEPT',
-                'AND', 'OR', 'NOT', 'IN', 'EXISTS', 'BETWEEN',
-                'CASE', 'WHEN', 'THEN', 'ELSE', 'END',
-                'AS', 'IS', 'NULL', 'TRUE', 'FALSE',
-                'DISTINCT', 'TOP', 'LIMIT', 'OFFSET',
-                'INTO', 'VALUES', 'SET'
-            ];
+        // 格式化方式切換
+        function handleFormatMethodChange() {
+            const selectedMethod = document.querySelector('input[name="formatMethod"]:checked').value;
+            const iframeContainer = document.getElementById('iframe-container');
+            const localSection = document.getElementById('local-section');
+            const getFromPoorSqlBtn = document.getElementById('get-from-poorsql-btn');
             
-            keywords.forEach(keyword => {
-                const regex = new RegExp(`\\b${keyword}\\b`, 'gi');
-                sql = sql.replace(regex, keyword);
+            // 更新選項樣式
+            document.querySelectorAll('.format-option').forEach(option => {
+                option.classList.remove('active');
             });
+            document.getElementById(`option-${selectedMethod}`).classList.add('active');
             
-            return sql;
+            // 顯示/隱藏相關區域
+            if (selectedMethod === 'iframe') {
+                iframeContainer.style.display = 'block';
+                localSection.style.display = 'none';
+                getFromPoorSqlBtn.style.display = 'inline-flex';
+            } else if (selectedMethod === 'local') {
+                iframeContainer.style.display = 'none';
+                localSection.style.display = 'block';
+                getFromPoorSqlBtn.style.display = 'none';
+            } else {
+                iframeContainer.style.display = 'none';
+                localSection.style.display = 'none';
+                getFromPoorSqlBtn.style.display = 'none';
+            }
         }
 
-        // 主要格式化函數 - 精準標準格式
-        function formatSqlAdvanced(sql) {
-            console.log('開始處理 SQL:', sql);
-            
-            // 先處理關鍵字大寫
-            sql = uppercaseKeywords(sql);
-            
-            // 使用標準格式化器建立基本結構
-            try {
-                sql = window.sqlFormatter.format(sql, {
-                    language: 'sql',
-                    keywordCase: 'upper',
-                    indentStyle: 'tabbed',
-                    logicalOperatorNewline: 'before'
-                });
-                console.log('標準格式化後:', sql);
-            } catch (error) {
-                console.warn('格式化器失敗，使用原始 SQL');
-            }
-            
-            // 精準後處理 - 完全符合標準格式
-            sql = precisionPostProcess(sql);
-            
-            console.log('最終結果:', sql);
-            return sql;
+        // 刷新 Poor SQL iframe
+        function refreshPoorSqlIframe() {
+            document.getElementById('poor-sql-iframe').src = 'https://poorsql.com/';
         }
 
-        // 精準後處理 - 完全符合標準格式
-        function precisionPostProcess(sql) {
-            const lines = sql.split('\n');
-            const result = [];
-            let i = 0;
-            
-            while (i < lines.length) {
-                const line = lines[i];
-                const trimmed = line.trim();
-                const upperTrimmed = trimmed.toUpperCase();
-                
-                // 處理 SELECT 語句
-                if (upperTrimmed === 'SELECT' || upperTrimmed.startsWith('SELECT ')) {
-                    const selectResult = processSelectClause(lines, i);
-                    result.push(...selectResult.lines);
-                    i = selectResult.nextIndex;
-                }
-                // 處理 GROUP BY 語句
-                else if (upperTrimmed === 'GROUP BY' || upperTrimmed.startsWith('GROUP BY ')) {
-                    const groupResult = processGroupByClause(lines, i);
-                    result.push(...groupResult.lines);
-                    i = groupResult.nextIndex;
-                }
-                // 處理 ORDER BY 語句
-                else if (upperTrimmed === 'ORDER BY' || upperTrimmed.startsWith('ORDER BY ')) {
-                    const orderResult = processOrderByClause(lines, i);
-                    result.push(...orderResult.lines);
-                    i = orderResult.nextIndex;
-                }
-                // 處理包含子查詢的行
-                else if (containsSubquery(line)) {
-                    const subqueryResult = processSubqueryLine(line);
-                    result.push(...subqueryResult);
-                    i++;
-                }
-                // 其他行直接保留
-                else {
-                    result.push(line);
-                    i++;
-                }
-            }
-            
-            return result.join('\n');
-        }
-
-        // 檢查是否包含子查詢
-        function containsSubquery(line) {
-            return /FROM\s*\(\s*SELECT/i.test(line) || 
-                   /JOIN\s*\(\s*SELECT/i.test(line) ||
-                   /\(\s*SELECT/i.test(line);
-        }
-
-        // 處理包含子查詢的行
-        function processSubqueryLine(line) {
-            const result = [];
-            const baseIndent = line.match(/^(\s*)/)[1];
-            
-            // 匹配 "FROM ( SELECT ..." 模式
-            const subqueryMatch = line.match(/^(.+?)\(\s*(SELECT.+)$/i);
-            if (subqueryMatch) {
-                const beforeSelect = subqueryMatch[1].trim();
-                const selectContent = subqueryMatch[2];
-                
-                // 添加 FROM ( 部分
-                result.push(baseIndent + beforeSelect + '(');
-                
-                // 處理子查詢 SELECT 部分
-                const subqueryLines = processSubquerySelect(selectContent, baseIndent + '\t');
-                result.push(...subqueryLines);
-                
-                return result;
-            }
-            
-            return [line];
-        }
-
-        // 處理子查詢中的 SELECT
-        function processSubquerySelect(selectContent, baseIndent) {
-            const result = [];
-            
-            // 移除可能的結尾括號和其他內容
-            let cleanSelect = selectContent;
-            let remainingContent = '';
-            
-            // 尋找 FROM 關鍵字來分離欄位部分
-            const fromMatch = cleanSelect.match(/^(SELECT\s+.+?)\s+(FROM\s+.+)$/i);
-            if (fromMatch) {
-                cleanSelect = fromMatch[1];
-                remainingContent = fromMatch[2];
-            }
-            
-            // 處理 SELECT 部分
-            const selectMatch = cleanSelect.match(/^(SELECT)\s*(.*)$/i);
-            if (selectMatch) {
-                result.push(baseIndent + 'SELECT');
-                
-                const fieldsContent = selectMatch[2].trim();
-                if (fieldsContent) {
-                    const fields = parseFieldsAdvanced(fieldsContent);
-                    
-                    fields.forEach((field, index) => {
-                        // 檢查是否是純註釋欄位（如 /*1202-3000 可轉債－成本*/）
-                        if (field.trim().startsWith('/*') && field.trim().endsWith('*/') && !field.includes('AS') && !field.includes('.')) {
-                            if (index === 0) {
-                                result.push(baseIndent + '\t' + field);
-                            } else {
-                                result.push(baseIndent + '\t,' + field);
-                            }
-                        } else {
-                            if (index === 0) {
-                                result.push(baseIndent + '\t' + field);
-                            } else {
-                                result.push(baseIndent + '\t,' + field);
-                            }
-                        }
-                    });
-                }
-            }
-            
-            // 處理剩餘內容（FROM 等）
-            if (remainingContent) {
-                const remainingLines = remainingContent.split(/\s+(?=FROM|WHERE|GROUP BY|ORDER BY|HAVING|JOIN|LEFT JOIN|RIGHT JOIN|INNER JOIN)/i);
-                remainingLines.forEach(line => {
-                    if (line.trim()) {
-                        result.push(baseIndent + line.trim());
-                    }
-                });
-            }
-            
-            return result;
-        }
-
-        // 處理 SELECT 子句
-        function processSelectClause(lines, startIndex) {
-            const selectLine = lines[startIndex];
-            const baseIndent = selectLine.match(/^(\s*)/)[1];
-            const result = [];
-            
-            // SELECT 關鍵字
-            result.push(baseIndent + 'SELECT');
-            
-            // 收集所有相關行
-            let i = startIndex + 1;
-            let allContent = '';
-            const commentLines = [];
-            
-            // 處理 SELECT 行本身的內容
-            const selectMatch = selectLine.match(/^\s*SELECT\s*(.*)$/i);
-            if (selectMatch && selectMatch[1].trim()) {
-                allContent = selectMatch[1].trim();
-            }
-            
-            // 收集後續行
-            while (i < lines.length) {
-                const line = lines[i];
-                const trimmed = line.trim();
-                const upperTrimmed = trimmed.toUpperCase();
-                
-                // 停止條件
-                if (trimmed === '' || 
-                    upperTrimmed.startsWith('FROM ') || 
-                    upperTrimmed.startsWith('WHERE ') ||
-                    upperTrimmed.startsWith('GROUP BY') ||
-                    upperTrimmed.startsWith('HAVING ') ||
-                    upperTrimmed.startsWith('ORDER BY') ||
-                    upperTrimmed.startsWith('UNION ') ||
-                    upperTrimmed.startsWith('SELECT ') ||
-                    upperTrimmed === ')' ||
-                    (upperTrimmed.startsWith(')') && upperTrimmed.length > 1)) {
-                    break;
-                }
-                
-                // 檢查是否是獨立註釋行
-                if (trimmed.startsWith('/*') && trimmed.endsWith('*/') && !trimmed.includes(',') && !trimmed.includes('AS')) {
-                    commentLines.push({ index: i, content: trimmed, position: allContent ? 'middle' : 'start' });
-                } else if (trimmed) {
-                    // 累積欄位內容
-                    if (allContent) {
-                        allContent += ' ' + trimmed;
-                    } else {
-                        allContent = trimmed;
-                    }
-                }
-                
-                i++;
-            }
-            
-            // 處理註釋和欄位
-            if (commentLines.length > 0 && commentLines[0].position === 'start') {
-                // 第一個是註釋行
-                result.push(baseIndent + '\t' + commentLines[0].content);
-                commentLines.shift();
-            }
-            
-            // 處理欄位
-            if (allContent.trim()) {
-                const fields = parseFieldsAdvanced(allContent);
-                
-                fields.forEach((field, index) => {
-                    // 檢查是否需要插入中間註釋
-                    const middleComments = commentLines.filter(c => c.position === 'middle');
-                    if (middleComments.length > 0 && index === Math.floor(fields.length / 2)) {
-                        result.push(baseIndent + '\t' + middleComments[0].content);
-                    }
-                    
-                    if (index === 0) {
-                        result.push(baseIndent + '\t' + field);
-                    } else {
-                        result.push(baseIndent + '\t,' + field);
-                    }
-                });
-            }
-            
-            // 處理剩餘的註釋行
-            commentLines.forEach(comment => {
-                if (comment.position === 'middle') {
-                    result.push(baseIndent + '\t' + comment.content);
-                }
-            });
-            
-            return {
-                lines: result,
-                nextIndex: i
-            };
-        }
-
-        // 處理 GROUP BY 子句
-        function processGroupByClause(lines, startIndex) {
-            return processFieldsClause(lines, startIndex, 'GROUP BY');
-        }
-
-        // 處理 ORDER BY 子句
-        function processOrderByClause(lines, startIndex) {
-            return processFieldsClause(lines, startIndex, 'ORDER BY');
-        }
-
-        // 統一處理欄位子句
-        function processFieldsClause(lines, startIndex, keyword) {
-            const line = lines[startIndex];
-            const baseIndent = line.match(/^(\s*)/)[1];
-            const result = [baseIndent + keyword];
-            
-            // 提取關鍵字後的內容
-            const regex = new RegExp(`^\\s*(${keyword})\\s*(.*)$`, 'i');
-            const match = line.match(regex);
-            
-            let content = '';
-            if (match && match[2].trim()) {
-                content = match[2].trim();
-            }
-            
-            // 收集多行內容
-            let i = startIndex + 1;
-            const stopKeywords = ['ORDER BY', 'GROUP BY', 'HAVING', 'UNION', 'SELECT', ')'];
-            
-            while (i < lines.length) {
-                const nextLine = lines[i];
-                const nextTrimmed = nextLine.trim();
-                
-                if (nextTrimmed === '' || stopKeywords.some(kw => nextTrimmed.toUpperCase().startsWith(kw))) {
-                    break;
-                }
-                
-                if (nextTrimmed) {
-                    content += (content ? ' ' : '') + nextTrimmed;
-                }
-                i++;
-            }
-            
-            // 處理欄位
-            if (content.trim()) {
-                const fields = parseFieldsAdvanced(content);
-                fields.forEach((field, index) => {
-                    if (index === 0) {
-                        result.push(baseIndent + '\t' + field);
-                    } else {
-                        result.push(baseIndent + '\t,' + field);
-                    }
-                });
-            }
-            
-            return {
-                lines: result,
-                nextIndex: i
-            };
-        }
-
-        function initializeAddSbAppendTool() {
-            const convertBtn = document.getElementById('convertSqlBtn');
-            const formatOnlyBtn = document.getElementById('formatOnlyBtn');
-            const clearBtn = document.getElementById('clearBtn');
-            const copyButtons = document.querySelectorAll('.copy-button');
-            
-            if (convertBtn) convertBtn.addEventListener('click', convertSql);
-            if (formatOnlyBtn) formatOnlyBtn.addEventListener('click', formatSqlOnly);
-            if (clearBtn) clearBtn.addEventListener('click', clearAll);
-            
-            copyButtons.forEach(button => {
-                const targetId = button.dataset.copyTarget;
-                if (targetId) {
-                    button.addEventListener('click', () => copyToClipboard(targetId));
-                }
-            });
-        }
-
-        // 僅格式化 SQL
-        function formatSqlOnly() {
-            const sqlInput = document.getElementById('sqlInput');
-            const sql = sqlInput.value.trim();
+        // 執行 Poor SQL 格式化
+        async function executePoorSqlFormat() {
+            const sql = document.getElementById('sqlInput').value.trim();
+            const selectedMethod = document.querySelector('input[name="formatMethod"]:checked').value;
             
             if (!sql) {
                 alert('請先輸入 SQL 語句');
                 return;
             }
+
+            if (selectedMethod === 'iframe') {
+                alert('請在上方的 Poor SQL 網頁中格式化您的 SQL，完成後點擊「從 Poor SQL 取得結果」按鈕');
+                return;
+            }
+
+            if (selectedMethod === 'manual') {
+                // 手動模式：直接將原始 SQL 複製到格式化區域
+                document.getElementById('formattedSql').textContent = sql;
+                updateStatus(2, 'ready');
+                alert('手動模式：原始 SQL 已複製到格式化區域，您可以手動編輯');
+                return;
+            }
+
+            // 本地 Poor SQL 模式
+            updateStatus(2, 'pending');
+
+            try {
+                let formattedSql = await formatWithLocalPoorSql(sql);
+                document.getElementById('formattedSql').textContent = formattedSql;
+                updateStatus(2, 'ready');
+                alert('SQL 格式化完成！');
+            } catch (error) {
+                console.error('格式化失敗:', error);
+                // 使用備用格式化
+                let fallbackSql = basicFormat(sql);
+                document.getElementById('formattedSql').textContent = fallbackSql;
+                updateStatus(2, 'ready');
+                alert('Poor SQL 格式化出現問題，已使用基本格式化');
+            }
+        }
+
+        // 本地 Poor SQL 格式化
+        function formatWithLocalPoorSql(sql) {
+            try {
+                // 檢查 Poor SQL 是否載入成功
+                if (typeof PoorMansTSqlFormatterLib === 'undefined') {
+                    throw new Error('Poor SQL 庫未正確載入');
+                }
+
+                // 使用 Poor SQL 格式化
+                const formatter = new PoorMansTSqlFormatterLib.Formatters.TSqlStandardFormatter();
+                
+                // 設定格式化選項
+                formatter.IndentString = '\t';       // 使用 tab 縮排
+                formatter.SpacesPerTab = 4;         // tab 等於 4 個空格
+                formatter.MaxLineWidth = 999;       // 最大行寬
+                formatter.NewStatementLineBreaks = 2; // 語句間換行
+                formatter.NewClauseLineBreaks = 1;   // 子句間換行
+                
+                // 建立解析器和格式化器
+                const parser = new PoorMansTSqlFormatterLib.Parsers.TSqlStandardParser();
+                const tokenizer = new PoorMansTSqlFormatterLib.Tokenizers.TSqlStandardTokenizer();
+                
+                // 格式化 SQL
+                const tokens = tokenizer.TokenizeSQL(sql);
+                const parsedTree = parser.ParseSQL(tokens);
+                const formattedSql = formatter.FormatSQLTree(parsedTree);
+                
+                return formattedSql;
+                
+            } catch (error) {
+                console.error('本地 Poor SQL 格式化失敗:', error);
+                // 回退到基本格式化
+                return basicFormat(sql);
+            }
+        }
+
+        // 從 Poor SQL 取得結果
+        function getFromPoorSql() {
+            const userInput = prompt('請貼上從 Poor SQL 格式化後的 SQL 結果：');
+            if (userInput && userInput.trim()) {
+                document.getElementById('formattedSql').textContent = userInput.trim();
+                updateStatus(2, 'ready');
+                alert('已成功取得 Poor SQL 格式化結果！');
+            }
+        }
+
+        // 手動編輯格式化結果
+        function editFormattedSql() {
+            const currentContent = document.getElementById('formattedSql').textContent;
+            const newContent = prompt('編輯格式化後的 SQL：', currentContent);
+            if (newContent !== null) {
+                document.getElementById('formattedSql').textContent = newContent;
+                if (newContent.trim()) {
+                    updateStatus(2, 'ready');
+                } else {
+                    updateStatus(2, 'empty');
+                }
+            }
+        }
+
+        // 載入測試 SQL
+        function loadTestSql() {
+            document.getElementById('sqlInput').value = TEST_SQL;
+            updateStatus(1, 'ready');
+        }
+
+        // 基本格式化函數（作為備用）
+        function basicFormat(sql) {
+            return sql
+                .replace(/\bselect\b/gi, 'SELECT')
+                .replace(/\bfrom\b/gi, 'FROM')
+                .replace(/\bwhere\b/gi, 'WHERE')
+                .replace(/\bjoin\b/gi, 'JOIN')
+                .replace(/\bleft join\b/gi, 'LEFT JOIN')
+                .replace(/\bright join\b/gi, 'RIGHT JOIN')
+                .replace(/\binner join\b/gi, 'INNER JOIN')
+                .replace(/\bgroup by\b/gi, 'GROUP BY')
+                .replace(/\border by\b/gi, 'ORDER BY')
+                .replace(/\band\b/gi, 'AND')
+                .replace(/\bor\b/gi, 'OR')
+                .replace(/\bas\b/gi, 'AS')
+                .replace(/\bon\b/gi, 'ON')
+                .replace(/\bin\b/gi, 'IN');
+        }
+
+        // 轉換為 sb.append()
+        function convertToSbAppend() {
+            const formattedSql = document.getElementById('formattedSql').textContent.trim();
             
-            const formattedSql = formatSqlAdvanced(sql);
-            sqlInput.value = formattedSql;
+            if (!formattedSql || formattedSql.includes('請先在上方')) {
+                alert('請先完成 SQL 格式化（步驟 2）');
+                return;
+            }
+
+            updateStatus(3, 'pending');
+
+            let sql = formattedSql;
+            const useCamelCaseAs = document.getElementById('camelCaseAsCheckbox').checked;
+
+            // 如果啟用駝峰命名，處理 AS 別名
+            if (useCamelCaseAs) {
+                sql = addCamelCaseAS(sql);
+            }
+
+            // 轉換為 sb.append() 格式
+            const lines = sql.split('\n');
+            const sbAppendResult = [];
+
+            lines.forEach(line => {
+                if (!line.trim()) return;
+
+                const commentInfo = extractComments(line);
+                const code = commentInfo.code.trim();
+
+                if (code) {
+                    const escapedCode = code.replace(/"/g, '\\"');
+                    const originalIndent = line.match(/^(\s*)/)[1];
+                    let appendStatement = `sb.append(" ${originalIndent}${escapedCode} ");`;
+
+                    if (commentInfo.hasComment && commentInfo.comment) {
+                        appendStatement += ` // ${commentInfo.comment}`;
+                    }
+
+                    sbAppendResult.push(appendStatement);
+                }
+            });
+
+            document.getElementById('sbAppendOutput').textContent = sbAppendResult.join('\n');
+            updateStatus(3, 'ready');
+
+            // 如果勾選了 HibernateScalarHelper，自動生成
+            if (document.getElementById('hibernateCheckbox').checked) {
+                generateHibernateHelperFromSql(sql);
+            }
         }
 
-        // 清空所有內容
-        function clearAll() {
-            document.getElementById('sqlInput').value = '';
-            document.getElementById('sbAppendOutput').textContent = 'sb.append() 結果將在這裡顯示...';
-            document.getElementById('hibernateOutput').textContent = 'HibernateScalarHelper 結果將在這裡顯示...';
-            document.getElementById('camelCaseAsCheckbox').checked = false;
-            document.getElementById('hibernateCheckbox').checked = false;
+        // 生成 HibernateScalarHelper
+        function generateHibernateHelper() {
+            const formattedSql = document.getElementById('formattedSql').textContent.trim();
+            
+            if (!formattedSql || formattedSql.includes('請先在上方')) {
+                alert('請先完成 SQL 格式化（步驟 2）');
+                return;
+            }
+
+            generateHibernateHelperFromSql(formattedSql);
         }
 
-        // 駝峰命名轉換
+        function generateHibernateHelperFromSql(sql) {
+            updateStatus(4, 'pending');
+
+            try {
+                const selectFields = parseSelectFields(sql);
+
+                if (selectFields.length === 0) {
+                    document.getElementById('hibernateOutput').innerHTML = '<div class="placeholder-text">無法識別 SELECT 語句，請檢查 SQL 格式</div>';
+                    updateStatus(4, 'empty');
+                    return;
+                }
+
+                const fields = selectFields.map(field => {
+                    const cleanField = field.replace(/--.*$/, '').trim();
+
+                    const asMatch = cleanField.match(/\s+AS\s+(\w+)/i);
+                    if (asMatch) {
+                        return asMatch[1];
+                    }
+
+                    let fieldName = cleanField;
+
+                    if (fieldName.includes('.')) {
+                        fieldName = fieldName.split('.').pop();
+                    }
+
+                    fieldName = fieldName.replace(/[^\w]/g, '');
+
+                    return fieldName;
+                }).filter(field => field && field.trim() !== '');
+
+                if (fields.length > 0) {
+                    const hibernateList = fields.map(field =>
+                        `scalarList.add(new HibernateScalarHelper("${field}", StandardBasicTypes.STRING));`
+                    ).join('\n');
+
+                    const hibernateResult = `List<HibernateScalarHelper> scalarList = new ArrayList<>();\n${hibernateList}`;
+                    document.getElementById('hibernateOutput').textContent = hibernateResult;
+                    updateStatus(4, 'ready');
+                } else {
+                    document.getElementById('hibernateOutput').innerHTML = '<div class="placeholder-text">無法提取到有效的欄位名</div>';
+                    updateStatus(4, 'empty');
+                }
+            } catch (error) {
+                console.error('生成 HibernateScalarHelper 時發生錯誤:', error);
+                document.getElementById('hibernateOutput').innerHTML = '<div class="placeholder-text">生成 HibernateScalarHelper 時發生錯誤：' + error.message + '</div>';
+                updateStatus(4, 'empty');
+            }
+        }
+
+        // 解析 SELECT 欄位
+        function parseSelectFields(sql) {
+            try {
+                let cleanSql = sql.replace(/--.*$/gm, '').replace(/\/\*[\s\S]*?\*\//g, '');
+
+                const selectMatch = cleanSql.match(/\bSELECT\s+([\s\S]+?)(?:\s+FROM\b|\s+INTO\b|\s*$)/i);
+
+                if (!selectMatch) {
+                    return [];
+                }
+
+                const fieldsText = selectMatch[1].trim();
+                const fields = fieldsText.split(',').map(f => f.trim()).filter(f => f);
+
+                return fields;
+            } catch (error) {
+                console.error('解析 SELECT 欄位時發生錯誤:', error);
+                return [];
+            }
+        }
+
+        // 駝峰命名處理
+        function addCamelCaseAS(sql) {
+            const lines = sql.split('\n');
+            let inSelectClause = false;
+
+            const processedLines = lines.map(line => {
+                const trimmed = line.trim().toUpperCase();
+
+                if (trimmed.startsWith('SELECT')) {
+                    inSelectClause = true;
+                } else if (inSelectClause && (trimmed.startsWith('FROM') || trimmed.startsWith('WHERE') || trimmed.startsWith('GROUP BY'))) {
+                    inSelectClause = false;
+                }
+
+                if (inSelectClause && !trimmed.startsWith('SELECT') && trimmed !== '') {
+                    return processSelectLine(line);
+                }
+
+                return line;
+            });
+
+            return processedLines.join('\n');
+        }
+
+        function processSelectLine(line) {
+            const indent = line.match(/^(\s*)/)[1];
+            let content = line.trim();
+
+            if (!content.toUpperCase().includes(' AS ') && content.includes('.')) {
+                const parts = content.split('.');
+                const fieldName = parts[parts.length - 1].replace(/[^\w]/g, '');
+
+                if (!isNamField(fieldName) && fieldName.includes('_')) {
+                    const camelCaseName = toCamelCase(fieldName);
+                    content += ` AS ${camelCaseName}`;
+                }
+            }
+
+            return indent + content;
+        }
+
         function toCamelCase(str) {
             return str.split('_').map((word, index) => {
                 if (index === 0) {
@@ -556,15 +923,14 @@
             }).join('');
         }
 
-        // 檢查是否為 nam 相關欄位
         function isNamField(fieldName) {
             const lowerFieldName = fieldName.toLowerCase();
-            return lowerFieldName.includes('nam') || 
-                   lowerFieldName.includes('name') ||
-                   lowerFieldName.startsWith('nam_') ||
-                   lowerFieldName.endsWith('_nam') ||
-                   lowerFieldName.startsWith('name_') ||
-                   lowerFieldName.endsWith('_name');
+            return lowerFieldName.includes('nam') ||
+                lowerFieldName.includes('name') ||
+                lowerFieldName.startsWith('nam_') ||
+                lowerFieldName.endsWith('_nam') ||
+                lowerFieldName.startsWith('name_') ||
+                lowerFieldName.endsWith('_name');
         }
 
         // 提取註釋
@@ -575,7 +941,6 @@
                 hasComment: false
             };
 
-            // 處理 -- 註釋
             const singleLineCommentMatch = line.match(/^(.*?)--(.*)$/);
             if (singleLineCommentMatch) {
                 result.code = singleLineCommentMatch[1].trimEnd();
@@ -586,241 +951,120 @@
             return result;
         }
 
-        // 解析 SELECT 欄位（用於 Hibernate）
-        function parseSelectFields(sql) {
-            try {
-                let cleanSql = sql.replace(/--.*$/gm, '').replace(/\/\*[\s\S]*?\*\//g, '');
-                
-                const selectMatch = cleanSql.match(/\bSELECT\s+([\s\S]+?)(?:\s+FROM\b|\s+INTO\b|\s*$)/i);
-                
-                if (!selectMatch) {
-                    return [];
-                }
-                
-                const fieldsText = selectMatch[1].trim();
-                return parseFieldsAdvanced(fieldsText);
-            } catch (error) {
-                console.error('解析 SELECT 欄位時發生錯誤:', error);
-                return [];
+        // 更新狀態指示器
+        function updateStatus(step, status) {
+            const indicator = document.getElementById(`status${step}`);
+            if (indicator) {
+                indicator.className = `status-indicator status-${status}`;
             }
         }
 
-        // 處理駝峰命名
-        function addCamelCaseAS(sql) {
-            const lines = sql.split('\n');
-            let inSelectClause = false;
-            
-            const processedLines = lines.map(line => {
-                const trimmed = line.trim().toUpperCase();
-                
-                if (trimmed.startsWith('SELECT')) {
-                    inSelectClause = true;
-                } else if (inSelectClause && (trimmed.startsWith('FROM') || trimmed.startsWith('WHERE') || trimmed.startsWith('GROUP BY'))) {
-                    inSelectClause = false;
-                }
-                
-                if (inSelectClause && !trimmed.startsWith('SELECT') && trimmed !== '') {
-                    return processSelectLine(line);
-                }
-                
-                return line;
-            });
-            
-            return processedLines.join('\n');
+        // 清空指定步驟
+        function clearStep(step) {
+            switch (step) {
+                case 1:
+                    document.getElementById('sqlInput').value = '';
+                    updateStatus(1, 'empty');
+                    break;
+                case 2:
+                    document.getElementById('formattedSql').innerHTML = '<div class="placeholder-text">請先在上方選擇格式化方式並執行 Poor SQL 格式化</div>';
+                    updateStatus(2, 'empty');
+                    break;
+                case 3:
+                    document.getElementById('sbAppendOutput').innerHTML = '<div class="placeholder-text">先完成步驟 2，然後點擊「轉換為 sb.append()」</div>';
+                    updateStatus(3, 'empty');
+                    break;
+                case 4:
+                    document.getElementById('hibernateOutput').innerHTML = '<div class="placeholder-text">勾選「產生 HibernateScalarHelper」選項，然後執行步驟 3</div>';
+                    updateStatus(4, 'empty');
+                    break;
+            }
         }
 
-        function processSelectLine(line) {
-            const commentInfo = extractComments(line);
-            let codePart = commentInfo.code;
-            const indent = line.match(/^(\s*)/)[1];
-            const cleanCode = codePart.trim();
-            
-            if (cleanCode.toUpperCase().includes(' AS ')) {
-                return line;
+        // 清空所有步驟
+        function clearAllSteps() {
+            for (let i = 1; i <= 4; i++) {
+                clearStep(i);
             }
-            
-            // 檢查是否以逗號開頭
-            let processedCode = cleanCode.replace(/^,\s*/, '');
-            const hasComma = cleanCode.startsWith(',');
-            
-            const fields = parseFieldsAdvanced(processedCode);
-            const processedFields = fields.map(field => processField(field.trim()));
-            
-            let result = processedFields.join(', ');
-            if (hasComma) {
-                result = ',' + result;
-            }
-            
-            let finalResult = indent + result;
-            
-            if (commentInfo.hasComment) {
-                finalResult += ' --' + commentInfo.comment;
-            }
-            
-            return finalResult;
+            document.getElementById('camelCaseAsCheckbox').checked = false;
+            document.getElementById('hibernateCheckbox').checked = false;
         }
 
-        function processField(fieldText) {
-            if (fieldText.toUpperCase().includes(' AS ')) {
-                return fieldText;
-            }
+        // 一鍵執行所有步驟
+        async function executeAllSteps() {
+            const sql = document.getElementById('sqlInput').value.trim();
             
-            let fieldName = fieldText;
-            
-            const functionMatch = fieldName.match(/(\w+)\s*\(\s*([^)]+)\s*\)/);
-            if (functionMatch) {
-                const innerContent = functionMatch[2].trim();
-                if (innerContent.includes('.')) {
-                    fieldName = innerContent.split('.').pop();
-                } else {
-                    fieldName = innerContent;
-                }
-            } else if (fieldName.includes('.')) {
-                fieldName = fieldName.split('.').pop();
-            }
-            
-            fieldName = fieldName.replace(/[^\w]/g, '');
-            
-            if (!isNamField(fieldName) && fieldName.includes('_')) {
-                const camelCaseName = toCamelCase(fieldName);
-                return `${fieldText} AS ${camelCaseName}`;
-            }
-            
-            return fieldText;
-        }
-
-        // 主要轉換函數
-        function convertSql() {
-            let sql = document.getElementById("sqlInput")?.value || "";
-            const useCamelCaseAs = document.getElementById('camelCaseAsCheckbox')?.checked || false;
-            const generateHibernate = document.getElementById('hibernateCheckbox')?.checked || false;
-            
-            if (!sql.trim()) {
-                alert("請輸入 SQL 語句");
+            if (!sql) {
+                alert('請先輸入 SQL 語句');
                 return;
             }
+
+            // 步驟 2: 格式化
+            await executePoorSqlFormat();
             
-            console.log('原始 SQL:', sql);
-            
-            // 1. 格式化 SQL
-            sql = formatSqlAdvanced(sql);
-            console.log('格式化後 SQL:', sql);
-            
-            // 2. 如果啟用駝峰命名，處理 AS 別名
-            if (useCamelCaseAs) {
-                sql = addCamelCaseAS(sql);
-                console.log('駝峰處理後 SQL:', sql);
+            // 等待一下讓 DOM 更新
+            setTimeout(() => {
+                // 步驟 3: 轉換
+                convertToSbAppend();
+                
+                // 如果勾選了 HibernateScalarHelper，會在 convertToSbAppend 中自動執行
+            }, 500);
+        }
+
+        // 複製到剪貼簿
+        function copyToClipboard(elementId) {
+            const element = document.getElementById(elementId);
+            if (!element) return;
+
+            let text;
+            if (element.tagName === 'TEXTAREA' || element.tagName === 'INPUT') {
+                text = element.value;
+            } else {
+                text = element.textContent;
             }
-            
-            // 3. 轉換為 sb.append() 格式
-            const lines = sql.split('\n');
-            const sbAppendResult = [];
-            
-            lines.forEach(line => {
-                if (!line.trim()) return;
-                
-                const commentInfo = extractComments(line);
-                const code = commentInfo.code.trim();
-                
-                if (code) {
-                    const escapedCode = code.replace(/"/g, '\\"');
-                    const originalIndent = line.match(/^(\s*)/)[1];
-                    let appendStatement = `sb.append("${originalIndent}${escapedCode} ");`;
+
+            if (!text || text.includes('請先在上方') || text.includes('先完成') || text.includes('勾選')) {
+                alert('沒有可複製的內容');
+                return;
+            }
+
+            navigator.clipboard.writeText(text).then(() => {
+                // 找到對應的複製按鈕並顯示反饋
+                const copyBtn = document.querySelector(`[onclick="copyToClipboard('${elementId}')"]`);
+                if (copyBtn) {
+                    const originalText = copyBtn.textContent;
+                    copyBtn.textContent = '✅ 已複製';
+                    copyBtn.classList.add('copied');
                     
-                    if (commentInfo.hasComment && commentInfo.comment) {
-                        appendStatement += ` // ${commentInfo.comment}`;
-                    }
-                    
-                    sbAppendResult.push(appendStatement);
+                    setTimeout(() => {
+                        copyBtn.textContent = originalText;
+                        copyBtn.classList.remove('copied');
+                    }, 2000);
                 }
+            }).catch(err => {
+                console.error('複製失敗:', err);
+                alert('複製失敗，請手動複製');
+            });
+        }
+
+        // 初始化
+        document.addEventListener('DOMContentLoaded', function() {
+            // 監聽格式化方式變化
+            document.querySelectorAll('input[name="formatMethod"]').forEach(radio => {
+                radio.addEventListener('change', handleFormatMethodChange);
             });
             
-            console.log('sb.append 結果:', sbAppendResult);
-            document.getElementById("sbAppendOutput").textContent = sbAppendResult.join('\n');
-            
-            // 4. 生成 HibernateScalarHelper
-            if (generateHibernate) {
-                generateHibernateHelper(sql);
-            } else {
-                document.getElementById("hibernateOutput").textContent = "請勾選「產生 HibernateScalarHelper」選項";
-            }
-        }
-
-        function generateHibernateHelper(sql) {
-            try {
-                const selectFields = parseSelectFields(sql);
-                
-                if (selectFields.length === 0) {
-                    document.getElementById("hibernateOutput").textContent = "無法識別 SELECT 語句，請檢查 SQL 格式";
-                    return;
-                }
-                
-                const fields = selectFields.map(field => {
-                    const trimmed = field.trim();
-                    const commentInfo = extractComments(trimmed);
-                    const cleanField = commentInfo.code.trim();
-                    
-                    const asMatch = cleanField.match(/\s+AS\s+(\w+)/i);
-                    if (asMatch) {
-                        return asMatch[1];
-                    }
-                    
-                    let fieldName = cleanField;
-                    
-                    if (fieldName.includes('.')) {
-                        fieldName = fieldName.split('.').pop();
-                    }
-                    
-                    fieldName = fieldName.replace(/[^\w]/g, '');
-                    
-                    return fieldName;
-                }).filter(field => field && field.trim() !== '');
-                
-                if (fields.length > 0) {
-                    const hibernateList = fields.map(field => 
-                        `scalarList.add(new HibernateScalarHelper("${field}", StandardBasicTypes.STRING));`
-                    ).join('\n');
-                    
-                    const hibernateResult = `List<HibernateScalarHelper> scalarList = new ArrayList<>();\n${hibernateList}`;
-                    document.getElementById("hibernateOutput").textContent = hibernateResult;
+            // 監聽輸入框變化
+            document.getElementById('sqlInput').addEventListener('input', function() {
+                if (this.value.trim()) {
+                    updateStatus(1, 'ready');
                 } else {
-                    document.getElementById("hibernateOutput").textContent = "無法提取到有效的欄位名";
+                    updateStatus(1, 'empty');
                 }
-            } catch (error) {
-                console.error('生成 HibernateScalarHelper 時發生錯誤:', error);
-                document.getElementById("hibernateOutput").textContent = "生成 HibernateScalarHelper 時發生錯誤：" + error.message;
-            }
-        }
+            });
 
-        function copyToClipboard(id) {
-            const element = document.getElementById(id);
-            if (element) {
-                const text = element.textContent;
-                if (text && !text.includes("將在這裡顯示") && !text.includes("請勾選")) {
-                    navigator.clipboard.writeText(text)
-                        .then(() => {
-                            const btn = document.querySelector(`[data-copy-target="${id}"]`);
-                            const originalText = btn.textContent;
-                            btn.textContent = '✅ 已複製！';
-                            btn.style.background = 'linear-gradient(135deg, #16a34a 0%, #22c55e 100%)';
-                            
-                            setTimeout(() => {
-                                btn.textContent = originalText;
-                                btn.style.background = '';
-                            }, 2000);
-                        })
-                        .catch(err => {
-                            console.error('複製失敗:', err);
-                            alert("複製失敗，請手動複製");
-                        });
-                } else {
-                    alert("沒有可複製的內容");
-                }
-            }
-        }
-
-        document.addEventListener('DOMContentLoaded', function() {
-            initializeAddSbAppendTool();
+            // 初始化顯示s
+            handleFormatMethodChange();
         });
     </script>
 </body>
