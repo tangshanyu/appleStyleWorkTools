@@ -5,7 +5,7 @@ function loadSharedNavigation() {
         { href: "putSpecSql.html", icon: "🔧", text: "參數替換" },
         { href: "changeQuestionMark.html", icon: "❓", text: "問號轉換" },
         { href: "addSbAppend.html", icon: "☕", text: "Java 轉換" },
-        { href: "jsParamConvert.html", icon: "🔄", text: "串轉物件" }
+
     ];
 
     const currentPage = window.location.pathname.split('/').pop() || 'index.html';

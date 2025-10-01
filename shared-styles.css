@@ -245,6 +245,73 @@ textarea.form-control {
     font-weight: 500;
 }
 
+/* --- Enhanced Hover Effects & Custom Checkbox --- */
+.btn:hover, .btn-success:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 25px rgba(var(--color-primary-rgb), 0.3);
+}
+.btn.theme-orange:hover { box-shadow: 0 8px 25px rgba(249, 115, 22, 0.4); }
+.btn.theme-red:hover { box-shadow: 0 8px 25px rgba(248, 81, 73, 0.4); }
+.btn.theme-green:hover { box-shadow: 0 8px 25px rgba(63, 185, 80, 0.4); }
+
+.nav a:hover {
+    background: rgba(var(--color-primary-rgb), 0.15);
+    color: var(--color-primary-hover);
+    transform: translateY(-2px);
+    box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+}
+
+.tool-card:hover {
+    transform: translateY(-8px);
+    box-shadow: 0 12px 40px rgba(0,0,0,0.5);
+    border-color: rgba(var(--color-primary-rgb), 0.6);
+}
+
+.format-option:hover {
+    border-color: var(--color-primary);
+    background: rgba(var(--color-primary-rgb), 0.15);
+    transform: scale(1.02);
+}
+
+/* Custom Checkbox Style */
+.option-group .format-option input[type="checkbox"] {
+    -webkit-appearance: none;
+    appearance: none;
+    background-color: transparent;
+    margin: 0;
+    font: inherit;
+    color: var(--color-text-secondary);
+    width: 22px;
+    height: 22px;
+    border: 2px solid rgba(var(--color-border-rgb), 0.7);
+    border-radius: 4px;
+    transform: translateY(-0.075em);
+    display: grid;
+    place-content: center;
+    cursor: pointer;
+    transition: all var(--duration-normal) ease;
+}
+
+.option-group .format-option input[type="checkbox"]::before {
+    content: "";
+    width: 12px;
+    height: 12px;
+    transform: scale(0);
+    transition: 120ms transform ease-in-out;
+    box-shadow: inset 1em 1em var(--color-primary);
+    background-color: CanvasText; /* For Windows High Contrast mode */
+    clip-path: polygon(14% 44%, 0 65%, 50% 100%, 100% 16%, 80% 0%, 43% 62%);
+}
+
+.option-group .format-option input[type="checkbox"]:checked {
+    border-color: var(--color-primary);
+    background: var(--color-primary);
+}
+
+.option-group .format-option input[type="checkbox"]:checked::before {
+    transform: scale(1);
+}
+
 /* --- Home Page: index.html --- */
 .welcome { text-align: center; margin-bottom: var(--space-32); }
 .welcome h2 { font-size: var(--font-size-2xl); margin-bottom: var(--space-16); }
@@ -339,6 +406,11 @@ textarea.form-control {
     border-radius: var(--radius-base);
     padding: var(--space-16);
     margin-top: var(--space-20);
+}
+.option-group {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 16px;
 }
 .options-title, .local-info { color: var(--color-text-secondary); }
 
