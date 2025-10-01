@@ -37,16 +37,16 @@
                 輸入包含參數串的 JavaScript 代碼，工具會自動解析並轉換為 <code>amPopUpWindowPost</code> 所需的物件格式。
                 <div class="example">
                     <strong>輸入範例：</strong><br>
-                    var params = "criteria.wrtoffTxSn=" + $("#finSlnClsPosTxSn").val() +<br>
-                    "&criteria.contrNo=" + $("#contrNo").val() + <br>
+                    var params = "criteria.wrtoffTxSn=" + $("#finSlnClsPosTxSn").val() +
+                    "&criteria.contrNo=" + $("#contrNo").val() + 
                     "&criteria.sn=1";<br><br>
                     <strong>輸出範例：</strong><br>
                     var url = "/dal/dal11032/process";<br>
-                    var paramObj = {<br>
+                    var paramObj = {
                     &nbsp;&nbsp;"progId": "AMDAL11032",<br>
                     &nbsp;&nbsp;"criteria.wrtoffTxSn": $("#finSlnClsPosTxSn").val(),<br>
                     &nbsp;&nbsp;...<br>
-                    };<br>
+                    };
                     amPopUpWindowPost({winSize: "L", url: url, params: paramObj});
                 </div>
             </div>
@@ -55,7 +55,7 @@
                 <label for="rawInput">📝 原始參數代碼：</label>
                 <textarea id="rawInput" class="form-control" rows="12" 
                     placeholder='貼上完整的參數代碼，例如：
-var params = "criteria.wrtoffTxSn=" + $("#finSlnClsPosTxSn").val() +
+vart params = "criteria.wrtoffTxSn=" + $("#finSlnClsPosTxSn").val() +
 "&criteria.contrNo=" + $("#contrNo").val() + 
 "&criteria.sn=1";'></textarea>
             </div>
@@ -99,11 +99,11 @@ var params = "criteria.wrtoffTxSn=" + $("#finSlnClsPosTxSn").val() +
                 let cleaned = input.replace(/var\s+params\s*=\s*/i, '').trim();
                 
                 // 移除開頭和結尾的引號和分號
-                cleaned = cleaned.replace(/^["']|["'];?$/g, '');
+                cleaned = cleaned.replace(/^["\']|["\'];?$/g, '');
                 
                 // 提取 URL 部分（如果存在）
                 let url = "/dal/dal11032/process"; // 默認URL
-                const urlMatch = cleaned.match(/url:\s*["']([^"']+)["']/);
+                const urlMatch = cleaned.match(/url:\s*["\']([^"\']+)['"]/);
                 if (urlMatch) {
                     url = urlMatch[1];
                 }
@@ -115,7 +115,7 @@ var params = "criteria.wrtoffTxSn=" + $("#finSlnClsPosTxSn").val() +
                 const parts = cleaned.split(/"\s*\+\s*"|\+\s*"/g);
                 
                 parts.forEach(part => {
-                    part = part.trim().replace(/^["']|["']$/g, '');
+                    part = part.trim().replace(/^["\']|["\']$/g, '');
                     
                     // 尋找 key=value 模式
                     if (part.includes('=')) {
@@ -133,7 +133,7 @@ var params = "criteria.wrtoffTxSn=" + $("#finSlnClsPosTxSn").val() +
                                     let cleanValue = value.trim();
                                     
                                     // 檢查是否是 jQuery 選擇器
-                                    const jqueryMatch = input.match(new RegExp(`["']${key.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}["']\\s*\\+\\s*([^"'\\+]+)`, 'i'));
+                                    const jqueryMatch = input.match(new RegExp(`["\']${key.replace(/[.*+?^${}()|[\\]/g, '\\$&')}["\']\s*\+\s*([^"\'\+]+)`, 'i'));
                                     if (jqueryMatch) {
                                         cleanValue = jqueryMatch[1].trim();
                                     }
@@ -173,7 +173,7 @@ var params = "criteria.wrtoffTxSn=" + $("#finSlnClsPosTxSn").val() +
                 
                 // 處理值的格式
                 let formattedValue;
-                if (typeof value === 'string' && (value.includes('$("#') || value.includes("$('") || value.includes('.val()'))) {
+                if (typeof value === 'string' && (value.includes('$"("#') || value.includes('$"("')) || value.includes('.val()'))) {
                     // jQuery 選擇器，保持原樣
                     formattedValue = value;
                 } else if (typeof value === 'string' && value.includes('<s:property')) {
